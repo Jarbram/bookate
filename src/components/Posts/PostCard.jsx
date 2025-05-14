@@ -113,7 +113,7 @@ export default function PostCard({ post, viewMode = 'grid' }) {
     >
       <CardActionArea 
         component="a" 
-        href={`/blog/${post.slug}`} 
+        href={`/post/${post.slug}`}
         sx={{ 
           height: '100%', 
           display: 'flex', 

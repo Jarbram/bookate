@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { absoluteUrl } from '@/lib/utils';
 
 // Elimino los mockPosts y mockCategories
 
@@ -175,11 +176,36 @@ const airtable = {
   // Obtener un post específico por slug
   async getPostBySlug(slug) {
     try {
-      const response = await axios.get(`/api/posts/${slug}`);
-      return response.data.post;
+      // Verificamos si estamos en el cliente o en el servidor
+      if (typeof window === 'undefined') {
+        // Estamos en el servidor, usamos directamente el módulo
+        // Pero asegurémonos de obtener la exportación correcta
+        const { default: airtableServer } = require('./airtable-server');
+        
+        // Si el módulo es un objeto con getPostBySlug, úsalo directamente
+        if (airtableServer && typeof airtableServer.getPostBySlug === 'function') {
+          return await airtableServer.getPostBySlug(slug);
+        }
+        
+        // Como alternativa, intentamos acceder directamente al módulo importado
+        // ya que podría estar usando module.exports = {...}
+        const serverModule = require('./airtable-server');
+        if (typeof serverModule.getPostBySlug === 'function') {
+          return await serverModule.getPostBySlug(slug);
+        }
+        
+        // Si todo falla, buscar en los mockPosts
+        console.error('No se pudo encontrar el método getPostBySlug en airtable-server');
+        const mockPosts = require('./airtable-server').mockPosts || [];
+        return mockPosts.find(p => p.slug === slug) || null;
+      } else {
+        // Estamos en el cliente, usamos axios con la ruta relativa
+        const response = await axios.get(`/api/posts/${slug}`);
+        return response.data.post;
+      }
     } catch (error) {
       console.error('Error al obtener post por slug:', error);
-      return null; // Devolvemos null en lugar de buscar en mockData
+      return null;
     }
   },
   

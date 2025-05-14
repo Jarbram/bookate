@@ -1,6 +1,10 @@
 import { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import airtable from '@/lib/airtable';
 import PostDetail from '@/components/Posts/PostDetail';
+import Header from '@/components/Header/Header';
+import Footer from '@/components/Footer/Footer';
+import { Box, Container, Typography } from '@mui/material';
 
 // Generación de metadatos para SEO
 export async function generateMetadata({ params }) {
@@ -38,8 +42,17 @@ export default async function PostPage({ params }) {
   const post = await airtable.getPostBySlug(params.slug);
   
   if (!post) {
-    return <div>Artículo no encontrado</div>;
+    // Usamos notFound() para mostrar la página 404
+    notFound();
   }
   
-  return <PostDetail post={post} />;
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      <Header />
+      <Box component="main" sx={{ flexGrow: 1 }}>
+        <PostDetail post={post} />
+      </Box>
+      <Footer />
+    </Box>
+  );
 } 

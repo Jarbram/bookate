@@ -334,4 +334,4 @@ function formatPostRecord(record) {
   }
 }
 
-export default airtableServer; 
+module.exports = airtableServer; 
