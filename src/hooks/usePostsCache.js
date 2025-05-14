@@ -11,9 +11,10 @@ export default function usePostsCache() {
   // Cargar todos los posts una sola vez
   useEffect(() => {
     const loadAllPosts = async () => {
+      // Si ya estamos cargando, no hacer nada
+      if (isFetching) return;
+      
       try {
-        if (isFetching) return; // Evitar solicitudes duplicadas
-        
         setIsFetching(true);
         
         // Verificar si hay datos en sessionStorage y si son recientes
@@ -52,7 +53,7 @@ export default function usePostsCache() {
     };
     
     loadAllPosts();
-  }, [isFetching]);
+  }, []);
   
   // Método para filtrar los posts en el cliente
   const filterPostsByCategory = useCallback((categoryName, posts = allPosts) => {
