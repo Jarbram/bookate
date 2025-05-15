@@ -210,6 +210,16 @@ export default function usePostsCache() {
     return loadPosts(true); // Forzar recarga
   }, [loadPosts]);
   
+  useEffect(() => {
+    console.log('Estado actual de posts:', {
+      totalPosts: allPosts.length,
+      hayDatos: allPosts.length > 0,
+      primerPost: allPosts[0] || 'No hay posts',
+      isLoading,
+      lastUpdated
+    });
+  }, [allPosts, isLoading, lastUpdated]);
+  
   return {
     allPosts,
     isLoading,

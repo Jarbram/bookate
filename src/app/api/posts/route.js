@@ -10,6 +10,8 @@ export async function GET(request) {
   const sortBy = searchParams.get('sortBy') || 'publishDate';
   const sortOrder = searchParams.get('sortOrder') || 'desc';
 
+  console.log('API Request - GET /api/posts:', { limit, offset, category, tag, sortBy, sortOrder });
+
   try {
     // Obtener los posts para la página actual
     const posts = await airtableServer.getPosts({ 
@@ -20,6 +22,8 @@ export async function GET(request) {
       sortBy,
       sortOrder
     });
+    
+    console.log(`API Response - Obtenidos ${posts.length} posts`);
     
     // Obtener el conteo total siempre
     const totalCount = await airtableServer.getPostsCount({ category, tag });
@@ -32,7 +36,11 @@ export async function GET(request) {
   } catch (error) {
     console.error('Error fetching posts:', error);
     return NextResponse.json(
-      { error: 'Error al obtener los posts', success: false },
+      { 
+        error: 'Error al obtener los posts', 
+        message: error.message,
+        success: false 
+      },
       { status: 500 }
     );
   }

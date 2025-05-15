@@ -44,7 +44,6 @@ export default function PostGrid() {
   const [totalPosts, setTotalPosts] = useState(0);
   const [viewMode, setViewMode] = useState('grid'); // 'grid' o 'list'
   const [sortOrder, setSortOrder] = useState('newest');
-  const [filterMode, setFilterMode] = useState('all'); // 'all' o 'top'
   
   // Obtener parámetros de la URL para aplicar filtros
   const searchParams = useSearchParams();
@@ -132,19 +131,13 @@ export default function PostGrid() {
       result = filterPostsBySearch(searchQuery, result);
     }
     
-    // Filtrado por destacados
-    if (filterMode === 'top') {
-      result = result.filter(post => post.featured || post.hot);
-    }
-    
     // Aplicar ordenamiento una sola vez
     return sortPosts(result, sortOrder);
   }, [
     allPosts, 
     isLoadingCache,
     categoryFilter, 
-    searchQuery, 
-    filterMode,
+    searchQuery,
     sortOrder,
     filterPostsByCategory,
     filterPostsBySearch,
@@ -261,10 +254,6 @@ export default function PostGrid() {
     console.log('Cambiando ordenamiento a:', event.target.value);
     setSortOrder(event.target.value);
   }, []);
-  
-  const handleFilterChange = useCallback((event, newValue) => {
-    setFilterMode(newValue);
-  }, []);
 
   // OPTIMIZACIÓN 4: Animaciones solo cuando son necesarias
   const containerVariants = useMemo(() => ({
@@ -306,6 +295,17 @@ export default function PostGrid() {
       window.location.href = `/post/${post.slug}`;
     }, 350); // Retraso suficiente para mostrar el efecto visual
   }, []);
+
+  useEffect(() => {
+    // Solo para depuración - añadir al inicio del componente
+    console.log('Estado PostGrid:', {
+      hayPosts: filteredPosts.length > 0,
+      totalFiltrados: filteredPosts.length,
+      mostrandoEnPantalla: displayPosts.length,
+      loading,
+      isLoadingCache
+    });
+  }, [filteredPosts, displayPosts, loading, isLoadingCache]);
 
   return (
     <Box 
@@ -349,48 +349,6 @@ export default function PostGrid() {
           display: { xs: 'none', md: 'block' }
         }}
       />
-      
-      {/* Filtro de pestañas (Todos/Destacados) */}
-      <Box sx={{ mb: 3, borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-        <Tabs 
-          value={filterMode}
-          onChange={handleFilterChange}
-          variant="fullWidth"
-          sx={{
-            minHeight: '40px',
-            '& .MuiTabs-indicator': {
-              backgroundColor: accentColor,
-              height: '3px',
-              borderRadius: '3px 3px 0 0'
-            },
-            '& .MuiTab-root': {
-              minHeight: '40px',
-              fontSize: { xs: '0.8rem', sm: '0.85rem' },
-              fontWeight: 600,
-              textTransform: 'none',
-              color: 'rgba(0,0,0,0.6)',
-              '&.Mui-selected': {
-                color: accentColor,
-                fontWeight: 700
-              }
-            }
-          }}
-        >
-          <Tab 
-            label="Todos los artículos" 
-            value="all" 
-          />
-          <Tab 
-            label={
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <span>Artículos destacados</span>
-                <LocalFireDepartmentIcon sx={{ ml: 0.5, fontSize: '1rem', color: '#ff4d4d' }} />
-              </Box>
-            } 
-            value="top" 
-          />
-        </Tabs>
-      </Box>
       
       {/* Mostrar chip de categoría con mejor feedback visual */}
       {categoryFilter && (
@@ -476,7 +434,7 @@ export default function PostGrid() {
             }}
           >
             {searchQuery ? `Resultados para "${searchQuery}"` : 
-              filterMode === 'top' ? 'Artículos destacados' : 'Artículos recientes'}
+              'Artículos recientes'}
           </Typography>
           <Chip 
             label={`${totalPosts} posts`} 

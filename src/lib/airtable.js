@@ -8,115 +8,56 @@ const airtable = {
   // Obtener todos los posts publicados con paginación mejorada
   async getPosts({ limit = 20, offset = 0, sortBy = 'publishDate', sortOrder = 'desc', category = '', search = '' }) {
     try {
+      // Añadir más logging para diagnóstico
+      console.log(`Iniciando petición getPosts con parámetros:`, { limit, offset, category, search });
+      
       // Construir URL de la API con parámetros necesarios
       let url = `/api/posts?limit=${limit}&offset=${offset}&sortBy=${sortBy}&sortOrder=${sortOrder}`;
       
-      // Para búsquedas y categorías, usar el caché y filtrado local cuando sea posible
-      const shouldUseServer = !category && !search;
+      if (category) {
+        url += `&category=${encodeURIComponent(category)}`;
+      }
       
-      if (shouldUseServer) {
-        // Sin filtros, podemos confiar en la paginación del servidor
-        if (search) {
-          url += `&search=${encodeURIComponent(search)}`;
-        }
-        
-        console.log(`Llamando a API para paginación: ${url}`);
-        
-        try {
-          const response = await fetch(url);
-          
-          if (!response.ok) {
-            console.error(`Error en solicitud API: ${response.status} - ${response.statusText}`);
-            // En lugar de lanzar un error fatal, buscaremos datos en caché o devolveremos un array vacío
-            const cachedAllPosts = sessionStorage.getItem('posts_all_nosearch');
-            if (cachedAllPosts) {
-              console.log('Usando datos de caché como respaldo por error del servidor');
-              const { posts } = JSON.parse(cachedAllPosts);
-              return posts.slice(offset, offset + limit);
-            }
-            return [];
-          }
-          
-          const data = await response.json();
-          return data.posts || [];
-        } catch (error) {
-          console.error(`Error al procesar solicitud de posts: ${error.message}`);
-          // Intentamos recuperar del error usando caché
-          const cachedAllPosts = sessionStorage.getItem('posts_all_nosearch');
-          if (cachedAllPosts) {
-            console.log('Usando datos de caché como respaldo tras error de red');
-            const { posts } = JSON.parse(cachedAllPosts);
-            return posts.slice(offset, offset + limit);
-          }
-          return [];
-        }
-      } else {
-        // Para filtros complejos, necesitamos más datos para filtrar en cliente
-        // Implementamos un caché por categorías
-        
-        // Verificar si tenemos un caché específico para esta categoría
-        const cacheKey = `posts_${category || 'all'}_${search || 'nosearch'}`;
-        const cachedData = sessionStorage.getItem(cacheKey);
-        
-        if (cachedData) {
-          const { posts, timestamp } = JSON.parse(cachedData);
-          // Caché válido por 5 minutos
-          if (Date.now() - timestamp < 5 * 60 * 1000) {
-            console.log(`Usando caché específico para ${cacheKey}`);
-            
-            // Aplicar paginación y ordenamiento en cliente
-            let filteredPosts = [...posts];
-            
-            if (sortBy === 'publishDate') {
-              filteredPosts.sort((a, b) => {
-                const dateA = new Date(a.publishDate || a.date || 0);
-                const dateB = new Date(b.publishDate || b.date || 0);
-                return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
-              });
-            } else if (sortBy === 'popular') {
-              filteredPosts.sort((a, b) => {
-                return sortOrder === 'desc' ? (b.views || 0) - (a.views || 0) : (a.views || 0) - (b.views || 0);
-              });
-            }
-            
-            return filteredPosts.slice(offset, offset + limit);
-          }
-        }
-        
-        // Si no hay caché, hacer una solicitud con un límite mayor para crear caché
-        const fetchLimit = Math.min(200, limit * 4); // Limitar a 200 para no sobrecargar
-        url = `/api/posts?limit=${fetchLimit}&offset=0&sortBy=${sortBy}&sortOrder=${sortOrder}`;
-        
-        if (category) {
-          url += `&category=${encodeURIComponent(category)}`;
-        }
-        
-        if (search) {
-          url += `&search=${encodeURIComponent(search)}`;
-        }
-        
-        console.log(`Cargando posts para caché: ${url}`);
-        
-        const response = await fetch(url);
+      if (search) {
+        url += `&search=${encodeURIComponent(search)}`;
+      }
+      
+      console.log(`Llamando a API: ${url}`);
+      
+      // Usar fetch con timeout para evitar bloqueos
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 segundos de timeout
+      
+      try {
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
         
         if (!response.ok) {
+          console.error(`Error en solicitud API: ${response.status} - ${response.statusText}`);
           throw new Error(`Error HTTP: ${response.status}`);
         }
         
         const data = await response.json();
-        let posts = data.posts || [];
-        
-        // Guardar en caché específico
-        sessionStorage.setItem(cacheKey, JSON.stringify({
-          posts,
-          timestamp: Date.now()
-        }));
-        
-        // Devolver solo la porción solicitada
-        return posts.slice(0, limit);
+        console.log(`Respuesta recibida con ${data.posts?.length || 0} posts`);
+        return data.posts || [];
+      } catch (error) {
+        console.error(`Error al procesar solicitud de posts: ${error.message}`);
+        throw error; // Re-lanzar para manejo en bloque catch exterior
       }
     } catch (error) {
       console.error('Error al obtener posts:', error);
+      
+      // Intentar usar caché como fallback
+      if (typeof window !== 'undefined') {
+        const cachedAllPosts = sessionStorage.getItem('posts_all_nosearch');
+        if (cachedAllPosts) {
+          console.log('Usando datos de caché como respaldo tras error');
+          const { posts } = JSON.parse(cachedAllPosts);
+          return posts.slice(offset, offset + limit);
+        }
+      }
+      
+      // Si todo falla, devolver array vacío pero mostrar error en consola
       return [];
     }
   },
