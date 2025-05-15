@@ -5,61 +5,116 @@ import { absoluteUrl } from '@/lib/utils';
 
 // Cliente para interactuar con nuestras API routes
 const airtable = {
-  // Obtener todos los posts publicados con filtrado mejorado
-  async getPosts({ limit = 10, offset = 0, sortBy = 'publishDate', sortOrder = 'desc', category = '', search = '' }) {
+  // Obtener todos los posts publicados con paginación mejorada
+  async getPosts({ limit = 20, offset = 0, sortBy = 'publishDate', sortOrder = 'desc', category = '', search = '' }) {
     try {
       // Construir URL de la API con parámetros necesarios
       let url = `/api/posts?limit=${limit}&offset=${offset}&sortBy=${sortBy}&sortOrder=${sortOrder}`;
       
-      // Si hay categoría, primero obtener todos los posts y filtrar en cliente
-      // para garantizar coincidencias exactas
-      const useClientFiltering = !!category;
+      // Para búsquedas y categorías, usar el caché y filtrado local cuando sea posible
+      const shouldUseServer = !category && !search;
       
-      // Si vamos a filtrar en cliente, solicitamos más posts para compensar
-      // los que se filtrarán después
-      const apiLimit = useClientFiltering ? Math.max(limit * 3, 50) : limit;
-      url = `/api/posts?limit=${apiLimit}&offset=${offset}&sortBy=${sortBy}&sortOrder=${sortOrder}`;
-      
-      // Añadir parámetro de búsqueda si existe
-      if (search) {
-        url += `&search=${encodeURIComponent(search)}`;
-      }
-      
-      console.log(`Llamando a API: ${url}`);
-      
-      const response = await fetch(url);
-      
-      if (!response.ok) {
-        throw new Error(`Error HTTP: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      let posts = data.posts || [];
-      
-      // Filtrado preciso por categoría en el cliente
-      if (category && posts.length > 0) {
-        console.log(`Filtrando ${posts.length} posts por categoría "${category}" en cliente`);
+      if (shouldUseServer) {
+        // Sin filtros, podemos confiar en la paginación del servidor
+        if (search) {
+          url += `&search=${encodeURIComponent(search)}`;
+        }
         
-        // Filtrar para asegurar coincidencias exactas con límites de palabra
-        posts = posts.filter(post => {
-          // Normalizar categorías para comparación
-          const categoriesArray = typeof post.categories === 'string'
-            ? post.categories.split(',').map(cat => cat.trim().toLowerCase())
-            : Array.isArray(post.categories)
-              ? post.categories.map(cat => typeof cat === 'string' ? cat.toLowerCase() : '')
-              : [];
+        console.log(`Llamando a API para paginación: ${url}`);
+        
+        try {
+          const response = await fetch(url);
           
-          // Verificar si la categoría exacta existe en el array
-          return categoriesArray.includes(category.toLowerCase());
-        });
+          if (!response.ok) {
+            console.error(`Error en solicitud API: ${response.status} - ${response.statusText}`);
+            // En lugar de lanzar un error fatal, buscaremos datos en caché o devolveremos un array vacío
+            const cachedAllPosts = sessionStorage.getItem('posts_all_nosearch');
+            if (cachedAllPosts) {
+              console.log('Usando datos de caché como respaldo por error del servidor');
+              const { posts } = JSON.parse(cachedAllPosts);
+              return posts.slice(offset, offset + limit);
+            }
+            return [];
+          }
+          
+          const data = await response.json();
+          return data.posts || [];
+        } catch (error) {
+          console.error(`Error al procesar solicitud de posts: ${error.message}`);
+          // Intentamos recuperar del error usando caché
+          const cachedAllPosts = sessionStorage.getItem('posts_all_nosearch');
+          if (cachedAllPosts) {
+            console.log('Usando datos de caché como respaldo tras error de red');
+            const { posts } = JSON.parse(cachedAllPosts);
+            return posts.slice(offset, offset + limit);
+          }
+          return [];
+        }
+      } else {
+        // Para filtros complejos, necesitamos más datos para filtrar en cliente
+        // Implementamos un caché por categorías
         
-        console.log(`Después del filtrado preciso quedan ${posts.length} posts`);
+        // Verificar si tenemos un caché específico para esta categoría
+        const cacheKey = `posts_${category || 'all'}_${search || 'nosearch'}`;
+        const cachedData = sessionStorage.getItem(cacheKey);
         
-        // Aplicar límite después del filtrado
-        posts = posts.slice(0, limit);
+        if (cachedData) {
+          const { posts, timestamp } = JSON.parse(cachedData);
+          // Caché válido por 5 minutos
+          if (Date.now() - timestamp < 5 * 60 * 1000) {
+            console.log(`Usando caché específico para ${cacheKey}`);
+            
+            // Aplicar paginación y ordenamiento en cliente
+            let filteredPosts = [...posts];
+            
+            if (sortBy === 'publishDate') {
+              filteredPosts.sort((a, b) => {
+                const dateA = new Date(a.publishDate || a.date || 0);
+                const dateB = new Date(b.publishDate || b.date || 0);
+                return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
+              });
+            } else if (sortBy === 'popular') {
+              filteredPosts.sort((a, b) => {
+                return sortOrder === 'desc' ? (b.views || 0) - (a.views || 0) : (a.views || 0) - (b.views || 0);
+              });
+            }
+            
+            return filteredPosts.slice(offset, offset + limit);
+          }
+        }
+        
+        // Si no hay caché, hacer una solicitud con un límite mayor para crear caché
+        const fetchLimit = Math.min(200, limit * 4); // Limitar a 200 para no sobrecargar
+        url = `/api/posts?limit=${fetchLimit}&offset=0&sortBy=${sortBy}&sortOrder=${sortOrder}`;
+        
+        if (category) {
+          url += `&category=${encodeURIComponent(category)}`;
+        }
+        
+        if (search) {
+          url += `&search=${encodeURIComponent(search)}`;
+        }
+        
+        console.log(`Cargando posts para caché: ${url}`);
+        
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+          throw new Error(`Error HTTP: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        let posts = data.posts || [];
+        
+        // Guardar en caché específico
+        sessionStorage.setItem(cacheKey, JSON.stringify({
+          posts,
+          timestamp: Date.now()
+        }));
+        
+        // Devolver solo la porción solicitada
+        return posts.slice(0, limit);
       }
-      
-      return posts;
     } catch (error) {
       console.error('Error al obtener posts:', error);
       return [];
@@ -228,6 +283,32 @@ const airtable = {
     } catch (error) {
       console.error('Error al obtener tags:', error);
       return [];
+    }
+  },
+  
+  // Nuevo método para carga progresiva
+  async getPostsBatch({ page = 1, batchSize = 20, sortBy = 'publishDate', sortOrder = 'desc' }) {
+    try {
+      const offset = (page - 1) * batchSize;
+      const url = `/api/posts/batch?page=${page}&batchSize=${batchSize}&sortBy=${sortBy}&sortOrder=${sortOrder}`;
+      
+      console.log(`Solicitando lote #${page} (${batchSize} posts)`);
+      
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`Error HTTP: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return {
+        posts: data.posts || [],
+        hasMore: data.hasMore || false,
+        total: data.total || 0
+      };
+    } catch (error) {
+      console.error('Error al obtener lote de posts:', error);
+      return { posts: [], hasMore: false, total: 0 };
     }
   },
 };

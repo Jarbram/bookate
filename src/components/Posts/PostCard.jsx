@@ -322,26 +322,8 @@ export default function PostCard({ post, viewMode = 'grid', onClick, isSelected 
                 <Box sx={{ 
                   display: 'flex', 
                   alignItems: 'center', 
-                  gap: 1.5,
                   ml: post.author ? 0 : 'auto'
                 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <VisibilityIcon sx={{ 
-                      fontSize: '0.9rem', 
-                      color: alpha('#000', 0.4),
-                      mr: 0.5
-                    }} />
-                    <Typography 
-                      variant="caption"
-                      sx={{ 
-                        fontSize: '0.75rem',
-                        color: alpha('#000', 0.6)
-                      }}
-                    >
-                      {postViews.toLocaleString()}
-                    </Typography>
-                  </Box>
-                  
                   <Box sx={{ 
                     display: 'flex', 
                     alignItems: 'center',
@@ -617,30 +599,12 @@ export default function PostCard({ post, viewMode = 'grid', onClick, isSelected 
                   </Typography>
                 </Box>
               ) : null}
-              
+                
               <Box sx={{ 
                 display: 'flex', 
                 alignItems: 'center', 
-                gap: 1.5,
                 ml: post.author ? 0 : 'auto'
               }}>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <VisibilityIcon sx={{ 
-                    fontSize: '0.9rem', 
-                    color: alpha('#000', 0.4),
-                    mr: 0.5
-                  }} />
-                  <Typography 
-                    variant="caption"
-                    sx={{ 
-                      fontSize: '0.75rem',
-                      color: alpha('#000', 0.6)
-                    }}
-                  >
-                    {postViews.toLocaleString()}
-                  </Typography>
-                </Box>
-                
                 <Box sx={{ 
                   display: 'flex', 
                   alignItems: 'center',

@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback, useMemo, memo } from 'react';
+import { useState, useEffect, useCallback, useMemo, memo, useRef } from 'react';
 import { 
   Box, 
   CircularProgress, 
@@ -29,6 +29,8 @@ import { useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import usePostsCache from '../../hooks/usePostsCache';
 import React from 'react';
+import { debounce } from 'lodash';
+import DownloadIcon from '@mui/icons-material/Download';
 
 // Memoizamos el componente PostCard para mejorar rendimiento
 const MemoizedPostCard = memo(PostCard);
@@ -108,7 +110,8 @@ export default function PostGrid() {
     isLoading: isLoadingCache, 
     filterPostsByCategory,
     filterPostsBySearch,
-    sortPosts
+    sortPosts,
+    loadMorePosts
   } = usePostsCache();
   
   // OPTIMIZACIÓN 1: Memoizar datos filtrados
@@ -150,51 +153,106 @@ export default function PostGrid() {
 
   // OPTIMIZACIÓN 2: Separar paginación
   const paginatedPosts = useMemo(() => {
+    if (!filteredPosts || filteredPosts.length === 0) return [];
+    
     const startIndex = (page - 1) * postsPerPage;
-    return memoizedFilteredData.slice(startIndex, startIndex + postsPerPage);
-  }, [memoizedFilteredData, page, postsPerPage]);
+    const endIndex = startIndex + postsPerPage;
+    
+    // Limitar estrictamente a postsPerPage (6)
+    return filteredPosts.slice(startIndex, endIndex);
+  }, [filteredPosts, page, postsPerPage]);
 
   // OPTIMIZACIÓN 3: Efecto simplificado para actualizar UI
   useEffect(() => {
     if (isLoadingCache) return;
     
     setLoading(true);
-    setTotalPosts(memoizedFilteredData.length);
     
     // Usar requestAnimationFrame para operaciones visuales
     requestAnimationFrame(() => {
+      // Actualizar la lista completa de posts filtrados
       setFilteredPosts(memoizedFilteredData);
-      setDisplayPosts(paginatedPosts);
+      
+      // Si estamos en modo paginación, usar solo los posts de la página actual
+      if (!searchParams.get('infinite')) {
+        // Asegurarse de que solo se muestren exactamente 6 posts
+        setDisplayPosts(paginatedPosts);
+      }
+      
       setLoading(false);
       setIsUpdatingUI(false);
     });
-  }, [memoizedFilteredData, paginatedPosts, isLoadingCache]);
+  }, [memoizedFilteredData, paginatedPosts, isLoadingCache, searchParams, postsPerPage]);
 
-  // Efecto para leer la página de la URL al cargar
+  // OPTIMIZACIÓN: Mejorar la sincronización entre paginación y URL
+  const handlePageChange = useCallback((event, value) => {
+    setPage(value);
+    
+    // Scroll hacia arriba al cambiar de página con animación suave
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+    
+    // Actualizar la URL con la nueva página
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('page', value.toString());
+    router.push(`?${params.toString()}`, { scroll: false });
+  }, [router, searchParams]);
+
+  // Asegurar que los posts se filtren y paginen correctamente
   useEffect(() => {
+    if (isLoadingCache) return;
+    
+    setLoading(true);
+    
+    // Usar requestAnimationFrame para operaciones visuales
+    requestAnimationFrame(() => {
+      // Actualizar la lista completa de posts filtrados
+      setFilteredPosts(memoizedFilteredData);
+      
+      // Aplicar paginación
+      const startIndex = (page - 1) * postsPerPage;
+      const paginatedItems = memoizedFilteredData.slice(startIndex, startIndex + postsPerPage);
+      setDisplayPosts(paginatedItems);
+      
+      setLoading(false);
+      setIsUpdatingUI(false);
+    });
+  }, [memoizedFilteredData, page, postsPerPage, isLoadingCache]);
+
+  // Actualizar la UI cuando cambian los filtros de paginación
+  useEffect(() => {
+    // Cuando la página cambia en la URL, actualizar el estado local
     const pageParam = searchParams.get('page');
     if (pageParam) {
       const pageNumber = parseInt(pageParam, 10);
       if (!isNaN(pageNumber) && pageNumber > 0 && pageNumber !== page) {
         setPage(pageNumber);
       }
-    } else {
+    } else if (page !== 1) {
       // Si no hay parámetro de página, asegurarnos de que estamos en la página 1
       setPage(1);
     }
-  }, [searchParams]);
+  }, [searchParams, page]);
+
+  // OPTIMIZACIÓN: Asegurar que la paginación se actualice cuando cambia el total de posts
+  useEffect(() => {
+    // Calcular el número total de páginas
+    const newTotalPages = Math.ceil(totalPosts / postsPerPage);
+    
+    // Si la página actual es mayor que el total de páginas, regresar a la última válida
+    if (page > newTotalPages && newTotalPages > 0) {
+      setPage(newTotalPages);
+      
+      // Actualizar URL con la página correcta
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('page', newTotalPages.toString());
+      router.push(`?${params.toString()}`, { scroll: false });
+    }
+  }, [totalPosts, postsPerPage, page, searchParams, router]);
 
   // Funciones de manejo - memoizadas para evitar re-renders
-  const handlePageChange = useCallback((event, value) => {
-    setPage(value);
-    
-    // Scroll hacia arriba al cambiar de página
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    });
-  }, []);
-  
   const handleViewChange = useCallback((newView) => {
     setViewMode(newView);
   }, []);
@@ -254,10 +312,9 @@ export default function PostGrid() {
       sx={{ 
         width: '100%',
         position: 'relative',
-        minHeight: '50vh',
-        opacity: isUpdatingUI ? 0.7 : 1,
-        filter: isUpdatingUI ? 'blur(1px)' : 'none',
-        transition: 'opacity 0.2s ease, filter 0.2s ease'
+        maxWidth: '1200px',
+        mx: 'auto',
+        px: { xs: 2, sm: 3 }
       }}
     >
       {/* Indicador visual mejorado para cambios de categoría */}
@@ -580,152 +637,83 @@ export default function PostGrid() {
         </Box>
       )}
       
-      {loading ? (
-        <Box sx={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center',
-          height: '300px'
-        }}>
-          <CircularProgress 
-            size={40}
-            thickness={4}
-            sx={{ 
-              color: accentColor,
-              '& .MuiCircularProgress-circle': {
-                strokeLinecap: 'round',
-              }
-            }} 
-          />
-        </Box>
-      ) : (
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="posts-container"
-        >
-          <Box sx={{ 
-            display: 'grid',
-            gridTemplateColumns: viewMode === 'grid' 
-              ? { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }
-              : '1fr',
-            gap: viewMode === 'grid' ? 3 : 2,
-            mb: 5
-          }}>
-            {displayPosts.length > 0 ? (
-              displayPosts.map((post, index) => (
-                <motion.div
-                  key={post.id}
-                  variants={itemVariants}
-                  custom={index}
+      {/* Mostrar posts usando displayPosts en lugar de virtualizedPosts */}
+      <Box sx={{ 
+        display: 'grid',
+        gridTemplateColumns: viewMode === 'grid' 
+          ? { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }
+          : '1fr',
+        gap: viewMode === 'grid' ? 3 : 2,
+        mb: 5
+      }}>
+        {displayPosts.length > 0 ? (
+          displayPosts.map((post, index) => (
+            <motion.div
+              key={post.id}
+              variants={itemVariants}
+              custom={index}
+            >
+              <Grow
+                in={!loading}
+                style={{ transformOrigin: '0 0 0' }}
+                timeout={Math.min(300 + (index * 50), 800)} // Limitar tiempo máximo
+              >
+                <Box 
+                  sx={{ 
+                    transform: selectedPostId === post.id ? 'scale(0.97)' : 'scale(1)',
+                    opacity: isNavigating ? 
+                      (selectedPostId === post.id ? 1 : 0.5) : 1,
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    position: 'relative',
+                    zIndex: selectedPostId === post.id ? 2 : 1,
+                  }}
                 >
-                  <Grow
-                    in={!loading}
-                    style={{ transformOrigin: '0 0 0' }}
-                    timeout={300 + (index * 50)}
-                  >
-                    <Box 
-                      sx={{ 
-                        transform: selectedPostId === post.id ? 'scale(0.97)' : 'scale(1)',
-                        opacity: isNavigating ? 
-                          (selectedPostId === post.id ? 1 : 0.5) : 1,
-                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                        position: 'relative',
-                        zIndex: selectedPostId === post.id ? 2 : 1,
-                        '&::after': selectedPostId === post.id ? {
-                          content: '""',
-                          position: 'absolute',
-                          top: -10,
-                          left: -10,
-                          right: -10,
-                          bottom: -10,
-                          background: `radial-gradient(circle, ${alpha(accentColor, 0.2)} 0%, rgba(255,255,255,0) 70%)`,
-                          borderRadius: '20px',
-                          zIndex: -1,
-                          animation: 'pulse 1.5s infinite',
-                          '@keyframes pulse': {
-                            '0%': { opacity: 0.4 },
-                            '50%': { opacity: 0.8 },
-                            '100%': { opacity: 0.4 }
-                          }
-                        } : {}
-                      }}
-                    >
-                      <MemoizedPostCard 
-                        post={post} 
-                        viewMode={viewMode}
-                        onClick={(e) => handlePostClick(post, e)}
-                        isSelected={selectedPostId === post.id}
-                      />
-                    </Box>
-                  </Grow>
-                </motion.div>
-              ))
-            ) : (
-              <Box sx={{ 
-                gridColumn: '1 / -1', 
-                textAlign: 'center', 
-                py: 5 
-              }}>
-                <Typography variant="body1" color="textSecondary">
-                  No se encontraron artículos
-                </Typography>
-              </Box>
-            )}
+                  <MemoizedPostCard 
+                    post={post} 
+                    viewMode={viewMode}
+                    onClick={(e) => handlePostClick(post, e)}
+                    isSelected={selectedPostId === post.id}
+                  />
+                </Box>
+              </Grow>
+            </motion.div>
+          ))
+        ) : (
+          <Box sx={{ 
+            gridColumn: '1 / -1', 
+            textAlign: 'center', 
+            py: 5 
+          }}>
+            <Typography variant="body1" color="textSecondary">
+              No se encontraron artículos
+            </Typography>
           </Box>
-        </motion.div>
-      )}
+        )}
+      </Box>
       
-      {/* Sin resultados para búsqueda */}
-      {!loading && displayPosts.length === 0 && searchQuery && (
-        <Box sx={{ 
-          textAlign: 'center', 
-          py: 5,
-          px: 2,
-          bgcolor: 'rgba(0,0,0,0.02)',
-          borderRadius: '8px',
-          border: '1px dashed rgba(0,0,0,0.1)'
-        }}>
-          <Typography variant="h6" sx={{ mb: 1, color: 'rgba(0,0,0,0.7)', fontWeight: 'medium' }}>
-            No se encontraron resultados para "{searchQuery}"
-          </Typography>
-          <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-            Intenta con otras palabras o explora las categorías disponibles
-          </Typography>
-          <Button 
-            variant="outlined" 
-            color="primary" 
-            size="small"
-            onClick={() => {
-              const params = new URLSearchParams(searchParams);
-              params.delete('search');
-              router.push(`?${params.toString()}`);
-            }}
-            sx={{ textTransform: 'none', borderRadius: '20px' }}
-          >
-            Limpiar búsqueda
-          </Button>
-        </Box>
-      )}
-      
-      {/* Información de paginación más detallada */}
+      {/* Información de paginación mejorada con mejor diseño */}
       {totalPosts > 0 && (
         <Box sx={{ 
           display: 'flex', 
           justifyContent: 'center',
           alignItems: 'center',
-          mb: 2,
-          fontSize: '0.85rem',
-          color: 'rgba(0,0,0,0.6)'
+          mb: 3,
+          py: 1,
+          px: 2,
+          borderRadius: '8px',
+          backgroundColor: alpha(accentColor, 0.03),
+          border: `1px solid ${alpha(accentColor, 0.08)}`,
+          color: alpha(textColor, 0.7),
+          fontSize: '0.9rem',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
         }}>
-          <Typography variant="body2">
+          <Typography variant="body2" sx={{ fontWeight: 500 }}>
             Mostrando {Math.min((page - 1) * postsPerPage + 1, totalPosts)} - {Math.min(page * postsPerPage, totalPosts)} de {totalPosts} artículos
           </Typography>
         </Box>
       )}
-
-      {/* Paginación mejorada con mejor UI/UX */}
+      
+      {/* Paginación mejorada con mejor diseño */}
       {totalPosts > postsPerPage && (
         <Box sx={{ 
           mt: 4, 
@@ -733,7 +721,7 @@ export default function PostGrid() {
           display: 'flex', 
           flexDirection: 'column',
           alignItems: 'center',
-          gap: 1,
+          gap: 2,
           opacity: loading ? 0.5 : 1,
           transition: 'opacity 0.3s ease'
         }}>
@@ -741,25 +729,43 @@ export default function PostGrid() {
             count={totalPages} 
             page={page} 
             onChange={handlePageChange}
+            darkMode={false} // Pasar explícitamente el modo
+            // Añadir un prop para indicar que queremos el estilo mejorado
+            variant="enhanced"
           />
           
-          {/* Para colecciones grandes, añadir un selector de página rápido */}
-          {totalPages > 10 && (
-            <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-              <Typography variant="body2" sx={{ mr: 1, fontSize: '0.8rem' }}>
+          {/* Selector de página rápido con mejor diseño */}
+          {totalPages > 8 && (
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              mt: 1,
+              p: 1,
+              borderRadius: '20px',
+              backgroundColor: alpha(accentColor, 0.03),
+              border: `1px solid ${alpha(accentColor, 0.08)}`,
+            }}>
+              <Typography variant="body2" sx={{ mr: 1, fontSize: '0.8rem', fontWeight: 500, color: alpha(textColor, 0.7) }}>
                 Ir a página:
               </Typography>
               <FormControl 
                 size="small" 
                 variant="outlined"
                 sx={{ 
-                  width: 80,
+                  width: 70,
                   '.MuiOutlinedInput-root': {
-                    borderRadius: '8px',
-                    backgroundColor: 'rgba(0,0,0,0.03)',
+                    borderRadius: '15px',
+                    backgroundColor: '#fff',
                     fontSize: '0.8rem',
                     '& fieldset': {
-                      border: '1px solid rgba(0,0,0,0.1)'
+                      border: `1px solid ${alpha(accentColor, 0.2)}`
+                    },
+                    '&:hover fieldset': {
+                      borderColor: accentColor
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: accentColor,
+                      borderWidth: '1px'
                     }
                   }
                 }}
