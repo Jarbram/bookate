@@ -1,18 +1,56 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { Container, Typography, Box, Divider, CircularProgress } from '@mui/material';
+import dynamic from 'next/dynamic';
 import Header from '@/components/Header/Header';
 import Sidebar from '@/components/Sidebar/Sidebar';
-import PostGrid from '@/components/Posts/PostGrid';
 import Footer from '@/components/Footer/Footer';
 import MobileSidebarContent from '@/components/Sidebar/MobileSidebarContent';
 import airtable from '@/lib/airtable';
 
+// Importar PostGrid de forma dinámica para evitar problemas de hidratación
+const PostGrid = dynamic(() => import('@/components/Posts/PostGrid'), {
+  ssr: false,
+  loading: () => (
+    <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+      <CircularProgress />
+    </Box>
+  )
+});
+
+// Componentes cargados dinámicamente con SSR:false para evitar errores de hidratación
+const HeaderComponent = dynamic(() => import('@/components/Header/Header'), { ssr: false });
+const FooterComponent = dynamic(() => import('@/components/Footer/Footer'), { ssr: false });
+const SidebarComponent = dynamic(() => import('@/components/Sidebar/Sidebar'), { ssr: false });
+const MobileSidebarContentComponent = dynamic(() => import('@/components/Sidebar/MobileSidebarContent'), { ssr: false });
+
+// Componente estático para el esqueleto de carga
+function LoadingSkeleton() {
+  return (
+    <Box sx={{ width: '100%', pt: 4 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+        <CircularProgress />
+      </Box>
+    </Box>
+  );
+}
+
+// Componente de la página principal
 export default function Home() {
+  return (
+    <Suspense fallback={<LoadingSkeleton />}>
+      <HomeContent />
+    </Suspense>
+  );
+}
+
+// Componente cliente para el contenido principal
+function HomeContent() {
   const [posts, setPosts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   
+  // Cargar datos solo en el cliente
   useEffect(() => {
     async function fetchData() {
       try {
@@ -36,11 +74,11 @@ export default function Home() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <Header />
+      <HeaderComponent />
       <Container maxWidth="lg" sx={{ my: { xs: 6, md: 6 }, flex: 1 }}>
         {/* Contenido de Sidebar para móvil - solo visible en xs */}
         <Box sx={{ display: { xs: 'block', md: 'none' }, mb: 4 }}>
-          <MobileSidebarContent categories={categories} />
+          {!loading && <MobileSidebarContentComponent categories={categories} />}
         </Box>
 
         <Box sx={{ 
@@ -54,7 +92,7 @@ export default function Home() {
             flexShrink: 0,
             display: { xs: 'none', md: 'block' }
           }}>
-            <Sidebar categories={categories} />
+            {!loading && <SidebarComponent categories={categories} />}
           </Box>
           
           {/* Posts Grid - ancho completo en móvil */}
@@ -73,16 +111,18 @@ export default function Home() {
         </Box>
         
         {/* Contenido adicional del Sidebar en móvil (después de los posts) */}
-        <Box sx={{ display: { xs: 'block', md: 'none' }, mt: 4 }}>
-          <Divider sx={{ mb: 4 }} />
-          <Typography variant="h5" component="h2" sx={{ mb: 3, fontWeight: 'bold' }}>
-            Descubre más
-          </Typography>
-          <MobileSidebarContent categories={categories} showSearchAndCategories={false} />
-        </Box>
+        {!loading && (
+          <Box sx={{ display: { xs: 'block', md: 'none' }, mt: 4 }}>
+            <Divider sx={{ mb: 4 }} />
+            <Typography variant="h5" component="h2" sx={{ mb: 3, fontWeight: 'bold' }}>
+              Descubre más
+            </Typography>
+            <MobileSidebarContentComponent categories={categories} showSearchAndCategories={false} />
+          </Box>
+        )}
       </Container>
       
-      <Footer />
+      <FooterComponent />
     </Box>
   );
 }

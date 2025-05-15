@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { 
   Box, 
   CircularProgress, 
@@ -28,6 +28,10 @@ import airtable from '../../lib/airtable'; // Importamos el cliente de airtable
 import { useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import usePostsCache from '../../hooks/usePostsCache';
+import React from 'react';
+
+// Memoizamos el componente PostCard para mejorar rendimiento
+const MemoizedPostCard = memo(PostCard);
 
 export default function PostGrid() {
   const [loading, setLoading] = useState(true);
@@ -96,47 +100,8 @@ export default function PostGrid() {
   }, [categoryFilter]); // Solo refrescar cuando cambia el filtro de categoría
 
   // Mejora de la gestión del estado de actualización de categorías
-  const [isUpdatingCategory, setIsUpdatingCategory] = useState(false);
-  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [isUpdatingUI, setIsUpdatingUI] = useState(false);
   
-  // Escuchar cambios de categoría mediante eventos personalizados mejorados
-  useEffect(() => {
-    const handleCategoryChange = (event) => {
-      console.log("Evento de cambio de categoría detectado:", event.detail.category);
-      setIsUpdatingCategory(true);
-      setIsTransitioning(true);
-      
-      // Forzar un estado de carga inmediato para mejor feedback
-      setLoading(true);
-      
-      // Limpiar cualquier resultado anterior para evitar que se vean datos antiguos
-      setFilteredPosts([]);
-    };
-    
-    window.addEventListener('categoryChanged', handleCategoryChange);
-    return () => {
-      window.removeEventListener('categoryChanged', handleCategoryChange);
-    };
-  }, []);
-  
-  // Efecto actualizado para manejar cambios de categoría
-  useEffect(() => {
-    console.log('Filtro de categoría actualizado:', categoryFilter);
-    
-    // Cada vez que cambia el filtro, volver a página 1
-    setPage(1);
-    
-    // Si hay un cambio definido en la categoría
-    if (categoryFilter !== undefined) {
-      setLoading(true);
-      
-      // Usar un temporizador para que la UI tenga tiempo de actualizarse
-      setTimeout(() => {
-        setIsUpdatingCategory(false);
-      }, 50);
-    }
-  }, [categoryFilter]);
-
   // Usar nuestro nuevo hook para gestionar el caché
   const { 
     allPosts, 
@@ -146,102 +111,64 @@ export default function PostGrid() {
     sortPosts
   } = usePostsCache();
   
-  // Efecto para filtrar posts en memoria (sin peticiones API adicionales)
-  useEffect(() => {
-    // Si aún estamos cargando el caché, no hacer nada
-    if (isLoadingCache) return;
+  // OPTIMIZACIÓN 1: Memoizar datos filtrados
+  const memoizedFilteredData = useMemo(() => {
+    if (isLoadingCache) return [];
     
-    const applyFilters = () => {
-      console.log('Aplicando filtros en memoria', {
-        categoryFilter,
-        searchQuery,
-        sortOrder,
-        filterMode
-      });
-      
-      // Establecer visualmente el estado de carga
-      setLoading(true);
-      
-      // Aplicar filtros de manera encadenada
-      let result = [...allPosts];
-      
-      // 1. Filtrar por categoría
-      if (categoryFilter) {
-        console.log(`Filtrando por categoría '${categoryFilter}'`);
-        result = filterPostsByCategory(categoryFilter, result);
-      }
-      
-      // 2. Filtrar por búsqueda
-      if (searchQuery) {
-        console.log(`Filtrando por término de búsqueda '${searchQuery}'`);
-        result = filterPostsBySearch(searchQuery, result);
-      }
-      
-      // 3. Filtrar destacados si es necesario
-      if (filterMode === 'top') {
-        console.log('Filtrando solo posts destacados');
-        result = result.filter(post => post.featured || post.hot);
-      }
-      
-      // 4. Aplicar ordenamiento - asegurando que funcione correctamente
-      console.log(`Aplicando ordenamiento: ${sortOrder}`);
-      if (sortOrder === 'newest') {
-        result.sort((a, b) => {
-          const dateA = new Date(a.publishDate || a.date || 0);
-          const dateB = new Date(b.publishDate || b.date || 0);
-          return dateB - dateA;
-        });
-      } else if (sortOrder === 'oldest') {
-        result.sort((a, b) => {
-          const dateA = new Date(a.publishDate || a.date || 0);
-          const dateB = new Date(b.publishDate || b.date || 0);
-          return dateA - dateB;
-        });
-      } else if (sortOrder === 'popular') {
-        result.sort((a, b) => {
-          const viewsA = parseInt(a.views || 0, 10);
-          const viewsB = parseInt(b.views || 0, 10);
-          return viewsB - viewsA;
-        });
-      }
-      
-      // Actualizar total de posts para paginación
-      setTotalPosts(result.length);
-      console.log(`Total de posts después de filtros: ${result.length}`);
-      
-      // Guardar posts filtrados (todos)
-      setFilteredPosts(result);
-      
-      // Aplicar paginación
-      const startIndex = (page - 1) * postsPerPage;
-      const paginatedResult = result.slice(startIndex, startIndex + postsPerPage);
-      
-      // Usar un pequeño retraso para mejor UX
-      setTimeout(() => {
-        setDisplayPosts(paginatedResult);
-        setLoading(false);
-        setIsUpdatingCategory(false);
-        
-        setTimeout(() => {
-          setIsTransitioning(false);
-        }, 100);
-      }, 150);
-    };
+    console.log('Aplicando filtros en memoria (memoizado)');
     
-    applyFilters();
+    let result = [...allPosts];
+    
+    // Filtrado por categoría
+    if (categoryFilter) {
+      result = filterPostsByCategory(categoryFilter, result);
+    }
+    
+    // Filtrado por búsqueda
+    if (searchQuery) {
+      result = filterPostsBySearch(searchQuery, result);
+    }
+    
+    // Filtrado por destacados
+    if (filterMode === 'top') {
+      result = result.filter(post => post.featured || post.hot);
+    }
+    
+    // Aplicar ordenamiento una sola vez
+    return sortPosts(result, sortOrder);
   }, [
     allPosts, 
     isLoadingCache,
-    filterPostsByCategory,
-    filterPostsBySearch,
-    sortPosts,
     categoryFilter, 
     searchQuery, 
-    sortOrder,
     filterMode,
-    page,
-    postsPerPage
+    sortOrder,
+    filterPostsByCategory,
+    filterPostsBySearch,
+    sortPosts
   ]);
+
+  // OPTIMIZACIÓN 2: Separar paginación
+  const paginatedPosts = useMemo(() => {
+    const startIndex = (page - 1) * postsPerPage;
+    return memoizedFilteredData.slice(startIndex, startIndex + postsPerPage);
+  }, [memoizedFilteredData, page, postsPerPage]);
+
+  // OPTIMIZACIÓN 3: Efecto simplificado para actualizar UI
+  useEffect(() => {
+    if (isLoadingCache) return;
+    
+    setLoading(true);
+    setTotalPosts(memoizedFilteredData.length);
+    
+    // Usar requestAnimationFrame para operaciones visuales
+    requestAnimationFrame(() => {
+      setFilteredPosts(memoizedFilteredData);
+      setDisplayPosts(paginatedPosts);
+      setLoading(false);
+      setIsUpdatingUI(false);
+    });
+  }, [memoizedFilteredData, paginatedPosts, isLoadingCache]);
 
   // Efecto para leer la página de la URL al cargar
   useEffect(() => {
@@ -257,7 +184,8 @@ export default function PostGrid() {
     }
   }, [searchParams]);
 
-  const handlePageChange = (event, value) => {
+  // Funciones de manejo - memoizadas para evitar re-renders
+  const handlePageChange = useCallback((event, value) => {
     setPage(value);
     
     // Scroll hacia arriba al cambiar de página
@@ -265,43 +193,61 @@ export default function PostGrid() {
       top: 0,
       behavior: 'smooth'
     });
-  };
+  }, []);
   
-  const handleViewChange = (newView) => {
+  const handleViewChange = useCallback((newView) => {
     setViewMode(newView);
-  };
+  }, []);
   
-  const handleSortChange = (event) => {
+  const handleSortChange = useCallback((event) => {
     console.log('Cambiando ordenamiento a:', event.target.value);
     setSortOrder(event.target.value);
-  };
+  }, []);
   
-  const handleFilterChange = (event, newValue) => {
+  const handleFilterChange = useCallback((event, newValue) => {
     setFilterMode(newValue);
-  };
+  }, []);
 
-  // Variantes para animaciones de Framer Motion
-  const containerVariants = {
+  // OPTIMIZACIÓN 4: Animaciones solo cuando son necesarias
+  const containerVariants = useMemo(() => ({
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.1
+        staggerChildren: 0.05 // Reducido de 0.1
       }
     }
-  };
+  }), []);
   
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
+  const itemVariants = useMemo(() => ({
+    hidden: { y: 10, opacity: 0 }, // Reducido de y: 20
     visible: {
       y: 0,
       opacity: 1,
-      transition: { type: 'spring', stiffness: 100, damping: 12 }
+      transition: { type: 'spring', stiffness: 100, damping: 15 }
     }
-  };
+  }), []);
 
   // Calcular el número total de páginas
   const totalPages = Math.ceil(totalPosts / postsPerPage);
+
+  // Añadir nuevo estado para el post seleccionado
+  const [selectedPostId, setSelectedPostId] = useState(null);
+  const [isNavigating, setIsNavigating] = useState(false);
+  
+  // Añadir función para manejar el clic en un post
+  const handlePostClick = useCallback((post, event) => {
+    event.preventDefault(); // Prevenir comportamiento predeterminado del enlace
+    
+    // Activar estado de selección
+    setSelectedPostId(post.id);
+    setIsNavigating(true);
+    
+    // Programar navegación con pequeño retraso para mostrar efecto
+    setTimeout(() => {
+      window.location.href = `/post/${post.slug}`;
+    }, 350); // Retraso suficiente para mostrar el efecto visual
+  }, []);
 
   return (
     <Box 
@@ -309,13 +255,13 @@ export default function PostGrid() {
         width: '100%',
         position: 'relative',
         minHeight: '50vh',
-        opacity: isTransitioning ? 0.7 : 1,
-        filter: isTransitioning ? 'blur(1px)' : 'none',
-        transition: 'opacity 0.3s ease, filter 0.3s ease'
+        opacity: isUpdatingUI ? 0.7 : 1,
+        filter: isUpdatingUI ? 'blur(1px)' : 'none',
+        transition: 'opacity 0.2s ease, filter 0.2s ease'
       }}
     >
       {/* Indicador visual mejorado para cambios de categoría */}
-      {isUpdatingCategory && (
+      {isUpdatingUI && (
         <Box 
           sx={{
             position: 'absolute',
@@ -395,7 +341,7 @@ export default function PostGrid() {
           mb: 3, 
           display: 'flex', 
           alignItems: 'center',
-          animation: isUpdatingCategory ? 'pulse 1.5s infinite' : 'none',
+          animation: isUpdatingUI ? 'pulse 1.5s infinite' : 'none',
           '@keyframes pulse': {
             '0%': { opacity: 0.7 },
             '50%': { opacity: 1 },
@@ -408,8 +354,7 @@ export default function PostGrid() {
           <Chip 
             label={categoryFilter} 
             onDelete={() => {
-              setIsUpdatingCategory(true);
-              setIsTransitioning(true);
+              setIsUpdatingUI(true);
               setLoading(true);
               
               // Emitir evento de cambio de categoría manualmente
@@ -589,6 +534,52 @@ export default function PostGrid() {
         </Box>
       </Box>
       
+      {/* Indicador de navegación */}
+      {isNavigating && (
+        <Box 
+          sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: 'rgba(255,255,255,0.8)',
+            zIndex: 9999,
+            backdropFilter: 'blur(4px)',
+            transition: 'all 0.3s ease-in-out'
+          }}
+        >
+          <Box sx={{ textAlign: 'center' }}>
+            <CircularProgress 
+              size={60} 
+              thickness={4}
+              sx={{ 
+                color: accentColor,
+                mb: 2
+              }} 
+            />
+            <Typography 
+              variant="h6" 
+              sx={{ 
+                fontWeight: 600,
+                color: accentColor,
+                animation: 'pulse 1.5s infinite',
+                '@keyframes pulse': {
+                  '0%': { opacity: 0.6 },
+                  '50%': { opacity: 1 },
+                  '100%': { opacity: 0.6 }
+                }
+              }}
+            >
+              Cargando artículo...
+            </Typography>
+          </Box>
+        </Box>
+      )}
+      
       {loading ? (
         <Box sx={{ 
           display: 'flex', 
@@ -632,12 +623,40 @@ export default function PostGrid() {
                   <Grow
                     in={!loading}
                     style={{ transformOrigin: '0 0 0' }}
-                    timeout={500 + (index * 100)}
+                    timeout={300 + (index * 50)}
                   >
-                    <Box>
-                      <PostCard 
+                    <Box 
+                      sx={{ 
+                        transform: selectedPostId === post.id ? 'scale(0.97)' : 'scale(1)',
+                        opacity: isNavigating ? 
+                          (selectedPostId === post.id ? 1 : 0.5) : 1,
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        position: 'relative',
+                        zIndex: selectedPostId === post.id ? 2 : 1,
+                        '&::after': selectedPostId === post.id ? {
+                          content: '""',
+                          position: 'absolute',
+                          top: -10,
+                          left: -10,
+                          right: -10,
+                          bottom: -10,
+                          background: `radial-gradient(circle, ${alpha(accentColor, 0.2)} 0%, rgba(255,255,255,0) 70%)`,
+                          borderRadius: '20px',
+                          zIndex: -1,
+                          animation: 'pulse 1.5s infinite',
+                          '@keyframes pulse': {
+                            '0%': { opacity: 0.4 },
+                            '50%': { opacity: 0.8 },
+                            '100%': { opacity: 0.4 }
+                          }
+                        } : {}
+                      }}
+                    >
+                      <MemoizedPostCard 
                         post={post} 
                         viewMode={viewMode}
+                        onClick={(e) => handlePostClick(post, e)}
+                        isSelected={selectedPostId === post.id}
                       />
                     </Box>
                   </Grow>
