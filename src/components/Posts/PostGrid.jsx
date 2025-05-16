@@ -42,66 +42,26 @@ export default function PostGrid() {
   const [page, setPage] = useState(1);
   const [postsPerPage] = useState(6);
   const [totalPosts, setTotalPosts] = useState(0);
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' o 'list'
+  const [viewMode, setViewMode] = useState('grid');
   const [sortOrder, setSortOrder] = useState('newest');
+  const [selectedPostId, setSelectedPostId] = useState(null);
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [isUpdatingUI, setIsUpdatingUI] = useState(false);
+  
+  // Referencias para evitar renderizaciones innecesarias
+  const lastFiltersRef = useRef({ category: '', search: '', sortOrder: 'newest' });
   
   // Obtener parámetros de la URL para aplicar filtros
   const searchParams = useSearchParams();
   const categoryFilter = searchParams.get('category') || '';
   const searchQuery = searchParams.get('search') || '';
-  
-  // Registrar cada cambio en los filtros para depuración
-  useEffect(() => {
-    console.log('Filtro de categoría actualizado:', categoryFilter);
-    // Cada vez que cambia el filtro, volver a página 1
-    setPage(1);
-    
-    // Forzar la recarga de posts cuando cambia la categoría
-    setLoading(true);
-  }, [categoryFilter]);
-
-  useEffect(() => {
-    console.log('Filtro de búsqueda actualizado:', searchQuery);
-    // Cada vez que cambia la búsqueda, volver a página 1
-    setPage(1);
-  }, [searchQuery]);
+  const router = useRouter();
   
   // Colores para el tema (sin darkMode)
   const primaryColor = '#6200ea';
   const textColor = '#1a1a1a';
   const accentColor = '#6200ea';
   const secondaryBg = '#f8f9fa';
-  const router = useRouter();
-
-  // Optimización: No necesitamos cargar todos los posts para contar
-  useEffect(() => {
-    const fetchPostCount = async () => {
-      try {
-        // Usar directamente el endpoint de conteo
-        const totalCountResponse = await airtable.getPostsCount({
-          category: categoryFilter
-        });
-        
-        if (totalCountResponse && typeof totalCountResponse.total === 'number') {
-          setTotalPosts(totalCountResponse.total);
-          console.log(`Total de posts disponibles: ${totalCountResponse.total}`);
-        } else {
-          // Si no obtenemos un total válido, volvemos a un valor predeterminado
-          console.warn('No se pudo obtener el conteo exacto de posts');
-          setTotalPosts(12); // Un valor razonable como fallback
-        }
-      } catch (error) {
-        console.error('Error al obtener el conteo total de posts:', error);
-        // En caso de error, establecer un valor predeterminado
-        setTotalPosts(12); 
-      }
-    };
-
-    fetchPostCount();
-  }, [categoryFilter]); // Solo refrescar cuando cambia el filtro de categoría
-
-  // Mejora de la gestión del estado de actualización de categorías
-  const [isUpdatingUI, setIsUpdatingUI] = useState(false);
   
   // Usar nuestro nuevo hook para gestionar el caché
   const { 
@@ -113,25 +73,36 @@ export default function PostGrid() {
     loadMorePosts
   } = usePostsCache();
   
-  // OPTIMIZACIÓN 1: Memoizar datos filtrados
+  // Optimización: Consolidar efectos relacionados con cambios de filtros
+  useEffect(() => {
+    // Verificar si realmente hay cambios para evitar actualizaciones innecesarias
+    const newFilters = { category: categoryFilter, search: searchQuery, sortOrder };
+    const hasChanged = JSON.stringify(newFilters) !== JSON.stringify(lastFiltersRef.current);
+    
+    if (hasChanged) {
+      console.log('Filtros actualizados:', newFilters);
+      lastFiltersRef.current = newFilters;
+      setPage(1);
+      setIsUpdatingUI(true);
+      setLoading(true);
+    }
+  }, [categoryFilter, searchQuery, sortOrder]);
+
+  // Optimización: Memoizar datos filtrados evitando recreaciones innecesarias
   const memoizedFilteredData = useMemo(() => {
     if (isLoadingCache) return [];
     
-    console.log('Aplicando filtros en memoria (memoizado)');
-    
     let result = [...allPosts];
     
-    // Filtrado por categoría
+    // Aplicar filtros solo cuando hay cambios reales
     if (categoryFilter) {
       result = filterPostsByCategory(categoryFilter, result);
     }
     
-    // Filtrado por búsqueda
     if (searchQuery) {
       result = filterPostsBySearch(searchQuery, result);
     }
     
-    // Aplicar ordenamiento una sola vez
     return sortPosts(result, sortOrder);
   }, [
     allPosts, 
@@ -144,79 +115,55 @@ export default function PostGrid() {
     sortPosts
   ]);
 
-  // OPTIMIZACIÓN 2: Separar paginación
-  const paginatedPosts = useMemo(() => {
-    if (!filteredPosts || filteredPosts.length === 0) return [];
+  // Optimización: Obtener recuento de posts una sola vez por categoría
+  useEffect(() => {
+    const fetchPostCount = async () => {
+      try {
+        // Evitar consulta innecesaria si ya tenemos los posts filtrados
+        if (!isLoadingCache && memoizedFilteredData.length > 0) {
+          setTotalPosts(memoizedFilteredData.length);
+          return;
+        }
+        
+        const totalCountResponse = await airtable.getPostsCount({
+          category: categoryFilter
+        });
+        
+        if (totalCountResponse && typeof totalCountResponse.total === 'number') {
+          setTotalPosts(totalCountResponse.total);
+        } else {
+          setTotalPosts(12);
+        }
+      } catch (error) {
+        console.error('Error al obtener el conteo total de posts:', error);
+        setTotalPosts(12); 
+      } finally {
+        // Asegurar que se desactiva el estado de carga incluso en caso de error
+        setLoading(false);
+        setIsUpdatingUI(false);
+      }
+    };
+
+    fetchPostCount();
+  }, [categoryFilter, isLoadingCache, memoizedFilteredData.length]);
+
+  // Optimización: Consolidar la lógica de paginación en un solo useEffect
+  useEffect(() => {
+    if (isLoadingCache) return;
+    
+    // Actualizar ambos conjuntos de datos en una sola operación
+    setFilteredPosts(memoizedFilteredData);
     
     const startIndex = (page - 1) * postsPerPage;
     const endIndex = startIndex + postsPerPage;
+    setDisplayPosts(memoizedFilteredData.slice(startIndex, endIndex));
     
-    // Limitar estrictamente a postsPerPage (6)
-    return filteredPosts.slice(startIndex, endIndex);
-  }, [filteredPosts, page, postsPerPage]);
-
-  // OPTIMIZACIÓN 3: Efecto simplificado para actualizar UI
-  useEffect(() => {
-    if (isLoadingCache) return;
-    
-    setLoading(true);
-    
-    // Usar requestAnimationFrame para operaciones visuales
-    requestAnimationFrame(() => {
-      // Actualizar la lista completa de posts filtrados
-      setFilteredPosts(memoizedFilteredData);
-      
-      // Si estamos en modo paginación, usar solo los posts de la página actual
-      if (!searchParams.get('infinite')) {
-        // Asegurarse de que solo se muestren exactamente 6 posts
-        setDisplayPosts(paginatedPosts);
-      }
-      
-      setLoading(false);
-      setIsUpdatingUI(false);
-    });
-  }, [memoizedFilteredData, paginatedPosts, isLoadingCache, searchParams, postsPerPage]);
-
-  // OPTIMIZACIÓN: Mejorar la sincronización entre paginación y URL
-  const handlePageChange = useCallback((event, value) => {
-    setPage(value);
-    
-    // Scroll hacia arriba al cambiar de página con animación suave
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    });
-    
-    // Actualizar la URL con la nueva página
-    const params = new URLSearchParams(searchParams.toString());
-    params.set('page', value.toString());
-    router.push(`?${params.toString()}`, { scroll: false });
-  }, [router, searchParams]);
-
-  // Asegurar que los posts se filtren y paginen correctamente
-  useEffect(() => {
-    if (isLoadingCache) return;
-    
-    setLoading(true);
-    
-    // Usar requestAnimationFrame para operaciones visuales
-    requestAnimationFrame(() => {
-      // Actualizar la lista completa de posts filtrados
-      setFilteredPosts(memoizedFilteredData);
-      
-      // Aplicar paginación
-      const startIndex = (page - 1) * postsPerPage;
-      const paginatedItems = memoizedFilteredData.slice(startIndex, startIndex + postsPerPage);
-      setDisplayPosts(paginatedItems);
-      
-      setLoading(false);
-      setIsUpdatingUI(false);
-    });
+    setLoading(false);
+    setIsUpdatingUI(false);
   }, [memoizedFilteredData, page, postsPerPage, isLoadingCache]);
 
-  // Actualizar la UI cuando cambian los filtros de paginación
+  // Optimización: Sincronizar página de la URL con estado local en un solo lugar
   useEffect(() => {
-    // Cuando la página cambia en la URL, actualizar el estado local
     const pageParam = searchParams.get('page');
     if (pageParam) {
       const pageNumber = parseInt(pageParam, 10);
@@ -224,88 +171,86 @@ export default function PostGrid() {
         setPage(pageNumber);
       }
     } else if (page !== 1) {
-      // Si no hay parámetro de página, asegurarnos de que estamos en la página 1
       setPage(1);
     }
-  }, [searchParams, page]);
-
-  // OPTIMIZACIÓN: Asegurar que la paginación se actualice cuando cambia el total de posts
-  useEffect(() => {
-    // Calcular el número total de páginas
-    const newTotalPages = Math.ceil(totalPosts / postsPerPage);
     
-    // Si la página actual es mayor que el total de páginas, regresar a la última válida
-    if (page > newTotalPages && newTotalPages > 0) {
-      setPage(newTotalPages);
+    // Validación para evitar páginas inválidas
+    const maxPage = Math.max(1, Math.ceil(totalPosts / postsPerPage));
+    if (page > maxPage && maxPage > 0) {
+      setPage(maxPage);
       
-      // Actualizar URL con la página correcta
       const params = new URLSearchParams(searchParams.toString());
-      params.set('page', newTotalPages.toString());
+      params.set('page', maxPage.toString());
       router.push(`?${params.toString()}`, { scroll: false });
     }
-  }, [totalPosts, postsPerPage, page, searchParams, router]);
+  }, [searchParams, page, totalPosts, postsPerPage, router]);
 
-  // Funciones de manejo - memoizadas para evitar re-renders
+  // Optimización: Memoizar handlers para evitar recreaciones
+  const handlePageChange = useCallback((event, value) => {
+    setPage(value);
+    
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+    
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('page', value.toString());
+    router.push(`?${params.toString()}`, { scroll: false });
+  }, [router, searchParams]);
+  
   const handleViewChange = useCallback((newView) => {
     setViewMode(newView);
+    // Guardar preferencia en localStorage para persistencia
+    localStorage.setItem('viewMode', newView);
   }, []);
   
   const handleSortChange = useCallback((event) => {
-    console.log('Cambiando ordenamiento a:', event.target.value);
     setSortOrder(event.target.value);
+    setIsUpdatingUI(true);
+  }, []);
+  
+  const handlePostClick = useCallback((post, event) => {
+    event.preventDefault();
+    setSelectedPostId(post.id);
+    setIsNavigating(true);
+    
+    // Usar router.push en lugar de window.location para mejor rendimiento
+    setTimeout(() => {
+      router.push(`/post/${post.slug}`);
+    }, 350);
+  }, [router]);
+
+  // Optimización: Cargar preferencia de viewMode desde localStorage al inicio
+  useEffect(() => {
+    const savedViewMode = localStorage.getItem('viewMode');
+    if (savedViewMode && (savedViewMode === 'grid' || savedViewMode === 'list')) {
+      setViewMode(savedViewMode);
+    }
   }, []);
 
-  // OPTIMIZACIÓN 4: Animaciones solo cuando son necesarias
+  // Calcular el número total de páginas
+  const totalPages = Math.max(1, Math.ceil(totalPosts / postsPerPage));
+
+  // Optimización: Mejoras en los efectos de animación
   const containerVariants = useMemo(() => ({
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.05 // Reducido de 0.1
+        staggerChildren: 0.03 // Aún más rápido para mejor UX
       }
     }
   }), []);
   
   const itemVariants = useMemo(() => ({
-    hidden: { y: 10, opacity: 0 }, // Reducido de y: 20
+    hidden: { y: 5, opacity: 0 }, // Aún más sutil
     visible: {
       y: 0,
       opacity: 1,
-      transition: { type: 'spring', stiffness: 100, damping: 15 }
+      transition: { type: 'spring', stiffness: 120, damping: 14 }
     }
   }), []);
-
-  // Calcular el número total de páginas
-  const totalPages = Math.ceil(totalPosts / postsPerPage);
-
-  // Añadir nuevo estado para el post seleccionado
-  const [selectedPostId, setSelectedPostId] = useState(null);
-  const [isNavigating, setIsNavigating] = useState(false);
-  
-  // Añadir función para manejar el clic en un post
-  const handlePostClick = useCallback((post, event) => {
-    event.preventDefault(); // Prevenir comportamiento predeterminado del enlace
-    
-    // Activar estado de selección
-    setSelectedPostId(post.id);
-    setIsNavigating(true);
-    
-    // Programar navegación con pequeño retraso para mostrar efecto
-    setTimeout(() => {
-      window.location.href = `/post/${post.slug}`;
-    }, 350); // Retraso suficiente para mostrar el efecto visual
-  }, []);
-
-  useEffect(() => {
-    // Solo para depuración - añadir al inicio del componente
-    console.log('Estado PostGrid:', {
-      hayPosts: filteredPosts.length > 0,
-      totalFiltrados: filteredPosts.length,
-      mostrandoEnPantalla: displayPosts.length,
-      loading,
-      isLoadingCache
-    });
-  }, [filteredPosts, displayPosts, loading, isLoadingCache]);
 
   return (
     <Box 
@@ -314,7 +259,8 @@ export default function PostGrid() {
         position: 'relative',
         maxWidth: '1200px',
         mx: 'auto',
-        px: { xs: 2, sm: 3 }
+        px: { xs: 1, sm: 3 },
+        mt: { xs: 1, sm: 3 },
       }}
     >
       {/* Indicador visual mejorado para cambios de categoría */}
@@ -595,45 +541,66 @@ export default function PostGrid() {
         </Box>
       )}
       
-      {/* Mostrar posts usando displayPosts en lugar de virtualizedPosts */}
+      {/* Optimización: Mostrar posts con mejores transiciones */}
       <Box sx={{ 
         display: 'grid',
         gridTemplateColumns: viewMode === 'grid' 
           ? { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }
           : '1fr',
         gap: viewMode === 'grid' ? 3 : 2,
-        mb: 5
+        mb: 5,
+        justifyItems: { xs: 'center', sm: 'stretch' },
+        width: '100%'
       }}>
-        {displayPosts.length > 0 ? (
+        {loading ? (
+          // Mostrar esqueletos de carga optimizados
+          [...Array(postsPerPage)].map((_, index) => (
+            <Box 
+              key={`skeleton-${index}`} 
+              sx={{
+                height: viewMode === 'grid' ? 320 : 140,
+                borderRadius: 2,
+                bgcolor: 'rgba(0,0,0,0.04)',
+                animation: 'pulse 1.5s infinite ease-in-out',
+                width: { xs: '90%', sm: '100%' },
+                maxWidth: { xs: '350px', sm: 'none' },
+                '@keyframes pulse': {
+                  '0%': { opacity: 0.6 },
+                  '50%': { opacity: 0.8 },
+                  '100%': { opacity: 0.6 }
+                }
+              }}
+            />
+          ))
+        ) : displayPosts.length > 0 ? (
           displayPosts.map((post, index) => (
             <motion.div
               key={post.id}
               variants={itemVariants}
               custom={index}
+              initial="hidden"
+              animate="visible"
+              style={{ width: '100%', display: 'flex', justifyContent: 'center' }}
             >
-              <Grow
-                in={!loading}
-                style={{ transformOrigin: '0 0 0' }}
-                timeout={Math.min(300 + (index * 50), 800)} // Limitar tiempo máximo
+              <Box 
+                sx={{ 
+                  transform: selectedPostId === post.id ? 'scale(0.97)' : 'scale(1)',
+                  opacity: isNavigating ? 
+                    (selectedPostId === post.id ? 1 : 0.5) : 1,
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  position: 'relative',
+                  zIndex: selectedPostId === post.id ? 2 : 1,
+                  width: { xs: '90%', sm: '100%' },
+                  maxWidth: { xs: '350px', sm: 'none' },
+                }}
               >
-                <Box 
-                  sx={{ 
-                    transform: selectedPostId === post.id ? 'scale(0.97)' : 'scale(1)',
-                    opacity: isNavigating ? 
-                      (selectedPostId === post.id ? 1 : 0.5) : 1,
-                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                    position: 'relative',
-                    zIndex: selectedPostId === post.id ? 2 : 1,
-                  }}
-                >
-                  <MemoizedPostCard 
-                    post={post} 
-                    viewMode={viewMode}
-                    onClick={(e) => handlePostClick(post, e)}
-                    isSelected={selectedPostId === post.id}
-                  />
-                </Box>
-              </Grow>
+                <MemoizedPostCard 
+                  post={post} 
+                  viewMode={viewMode}
+                  onClick={(e) => handlePostClick(post, e)}
+                  isSelected={selectedPostId === post.id}
+                />
+              </Box>
             </motion.div>
           ))
         ) : (

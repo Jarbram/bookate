@@ -73,18 +73,32 @@ function HomeContent() {
   }, []);
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+    <Box sx={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      minHeight: '100vh',
+      width: '100%',
+      overflowX: 'hidden'
+    }}>
       <HeaderComponent />
-      <Container maxWidth="lg" sx={{ my: { xs: 6, md: 6 }, flex: 1 }}>
+      <Container 
+        maxWidth="lg" 
+        sx={{ 
+          my: { xs: 4, md: 6 }, 
+          flex: 1,
+          px: { xs: 2, sm: 3, md: 4 }
+        }}
+      >
         {/* Contenido de Sidebar para móvil - solo visible en xs */}
-        <Box sx={{ display: { xs: 'block', md: 'none' }, mb: 4 }}>
+        <Box sx={{ display: { xs: 'block', md: 'none' }, mb: 4, width: '100%' }}>
           {!loading && <MobileSidebarContentComponent categories={categories} />}
         </Box>
 
         <Box sx={{ 
           display: 'flex', 
           flexDirection: { xs: 'column', md: 'row' },
-          gap: { xs: 3, md: 4 }
+          gap: { xs: 3, md: 4 },
+          width: '100%'
         }}>
           {/* Sidebar - oculto en móvil */}
           <Box sx={{ 

@@ -16,16 +16,16 @@ import {
   TextField,
   Button
 } from '@mui/material';
-import FacebookIcon from '@mui/icons-material/Facebook';
 import InstagramIcon from '@mui/icons-material/Instagram';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import MenuBookIcon from '@mui/icons-material/MenuBook';
+import FacebookIcon from '@mui/icons-material/Facebook';
 import TwitterIcon from '@mui/icons-material/Twitter';
 import YouTubeIcon from '@mui/icons-material/YouTube';
-import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import EmailIcon from '@mui/icons-material/Email';
 import PhoneIcon from '@mui/icons-material/Phone';
 import BookIcon from '@mui/icons-material/Book';
-import MenuBookIcon from '@mui/icons-material/MenuBook';
 import LocalLibraryIcon from '@mui/icons-material/LocalLibrary';
 import PinterestIcon from '@mui/icons-material/Pinterest';
 import { motion } from 'framer-motion';
@@ -43,7 +43,6 @@ export default function Footer({ darkMode = false }) {
   
   useEffect(() => {
     const handleScroll = () => {
-      // Mostrar cuando se ha desplazado más del 30% de la página
       const scrolled = window.scrollY > window.innerHeight * 0.3;
       setIsVisible(scrolled);
     };
@@ -74,20 +73,21 @@ export default function Footer({ darkMode = false }) {
         backgroundImage: darkMode 
           ? 'linear-gradient(to bottom, #121212, #1a1a1a)'
           : 'linear-gradient(to bottom, #ffffff, #f8f9fa)',
-        py: { xs: 6, md: 8 },
+        pt: { xs: 6, md: 8 },
+        pb: { xs: 8, md: 10 },
         borderTop: `1px solid ${darkMode ? 'rgba(255,255,255,0.08)' : '#eaeaea'}`,
         position: 'relative',
         overflow: 'hidden',
       }}
     >
-      {/* Elementos decorativos */}
+      {/* Elementos decorativos mejorados */}
       <Box
         sx={{
           position: 'absolute',
-          top: 40,
-          right: -20,
-          width: '200px',
-          height: '200px',
+          top: '5%',
+          right: '-5%',
+          width: '300px',
+          height: '300px',
           borderRadius: '50%',
           background: `radial-gradient(circle, ${alpha(accentColor, 0.08)} 0%, transparent 70%)`,
           zIndex: 0,
@@ -98,10 +98,10 @@ export default function Footer({ darkMode = false }) {
       <Box
         sx={{
           position: 'absolute',
-          bottom: -50,
-          left: -30,
-          width: '250px',
-          height: '250px',
+          bottom: '-10%',
+          left: '-8%',
+          width: '350px',
+          height: '350px',
           borderRadius: '50%',
           background: `radial-gradient(circle, ${alpha(accentColor, 0.05)} 0%, transparent 70%)`,
           zIndex: 0,
@@ -110,455 +110,239 @@ export default function Footer({ darkMode = false }) {
       />
 
       <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
-        {/* Logo y descripción en la parte superior */}
+        {/* Sección superior revisada */}
         <Box sx={{ 
           display: 'flex', 
           flexDirection: { xs: 'column', md: 'row' },
           justifyContent: 'space-between',
-          alignItems: { xs: 'flex-start', md: 'center' },
-          mb: 6
+          alignItems: { xs: 'flex-start', md: 'flex-start' },
+          mb: { xs: 5, md: 7 },
+          gap: { xs: 3, md: 4 }
         }}>
-          <Box sx={{ mb: { xs: 3, md: 0 } }}>
+          <Box sx={{ 
+            mb: { xs: 1, md: 0 },
+            maxWidth: { xs: '100%', md: '45%' } 
+          }}>
             <Typography 
               variant="h4" 
               component="div" 
               sx={{ 
                 fontWeight: 800, 
-                mb: 2,
+                mb: 2.5,
                 color: textColor,
                 display: 'flex',
                 alignItems: 'center'
               }}
             >
-              <MenuBookIcon sx={{ mr: 1, fontSize: '2rem', color: accentColor }} />
+              <MenuBookIcon sx={{ 
+                mr: 1.5, 
+                fontSize: '2.2rem', 
+                color: accentColor,
+                filter: darkMode ? 'drop-shadow(0 0 2px rgba(187,134,252,0.3))' : 'drop-shadow(0 0 2px rgba(98,0,234,0.2))'
+              }} />
               Bookate
             </Typography>
             <Typography 
-              variant="subtitle2" 
+              variant="subtitle1" 
               sx={{ 
-                color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
-                maxWidth: '500px'
+                color: darkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.8)',
+                fontWeight: 500,
+                mb: 1,
+                letterSpacing: 0.2
               }}
             >
               Un espacio donde las páginas cobran vida y las historias se comparten.
             </Typography>
+            
+            <Typography 
+              variant="body2" 
+              sx={{ 
+                color: darkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)',
+                lineHeight: 1.6
+              }}
+            >
+              Exploramos universos literarios a través de reseñas detalladas, entrevistas con autores y análisis de obras que inspiran y transforman.
+            </Typography>
           </Box>
-          
-          <Typography 
-            variant="body2" 
-            sx={{ 
-              color: darkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)',
-              maxWidth: { md: '400px' },
-              textAlign: { xs: 'left', md: 'right' }
-            }}
-          >
-            Exploramos universos literarios a través de reseñas detalladas, entrevistas con autores y análisis de obras que inspiran y transforman.
-          </Typography>
-        </Box>
 
-        <Grid container spacing={4}>
-          {/* Columna Explora */}
-          <Grid item xs={12} sm={6} md={4}>
+          {/* Sección de redes sociales (Instagram) */}
+          <Box sx={{ 
+            textAlign: { xs: 'left', md: 'left' },
+            maxWidth: { xs: '100%', md: '25%' },
+            order: { xs: 3, md: 2 }
+          }}>
             <Typography 
               variant="h6" 
-              gutterBottom
               sx={{ 
                 fontWeight: 700,
                 color: textColor,
-                mb: 3,
+                mb: 2.5,
                 display: 'flex',
                 alignItems: 'center',
+                position: 'relative',
+                pl: 2,
                 '&::before': {
                   content: '""',
+                  position: 'absolute',
+                  left: 0,
                   display: 'inline-block',
                   width: '4px',
-                  height: '18px',
-                  borderRadius: '2px',
+                  height: '20px',
+                  borderRadius: '4px',
                   backgroundColor: accentColor,
-                  marginRight: '10px'
                 }
               }}
             >
-              Explora
+              Síguenos
             </Typography>
             
-            <Box component="ul" sx={{ pl: 0, listStyle: 'none', mb: 0 }}>
-              {['Reseñas Recientes', 'Autores del Mes', 'Clásicos Literarios', 'Novedades Editoriales'].map((item, index) => (
-                <motion.div 
-                  key={index}
-                  variants={linkVariants}
-                  whileHover="hover"
-                >
-                  <Box component="li" sx={{ mb: 2 }}>
-                    <Link 
-                      href="#" 
-                      color="inherit" 
-                      underline="none"
-                      sx={{ 
-                        color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        transition: 'all 0.2s',
-                        '&:hover': {
-                          color: accentColor,
-                        }
-                      }}
-                    >
-                      <Box 
-                        component="span" 
-                        sx={{ 
-                          width: '5px', 
-                          height: '5px', 
-                          borderRadius: '50%', 
-                          bgcolor: 'currentColor',
-                          display: 'inline-block',
-                          mr: 1.5,
-                          opacity: 0.8
-                        }} 
-                      />
-                      {item}
-                    </Link>
-                  </Box>
-                </motion.div>
-              ))}
+            <Typography variant="body2" sx={{ 
+              mb: 2.5, 
+              color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
+              lineHeight: 1.5
+            }}>
+              Descubre nuestro contenido en Instagram
+            </Typography>
+            
+            <Box sx={{ display: 'flex' }}>
+              <IconButton 
+                aria-label="Instagram"
+                size="medium"
+                sx={{ 
+                  backgroundColor: darkMode ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.04)',
+                  color: darkMode ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.8)',
+                  p: 1.5,
+                  borderRadius: '12px',
+                  '&:hover': {
+                    backgroundColor: accentColor,
+                    color: 'white',
+                    transform: 'translateY(-3px)',
+                    boxShadow: darkMode 
+                      ? '0 6px 15px rgba(187,134,252,0.3)' 
+                      : '0 6px 15px rgba(98,0,234,0.2)',
+                  },
+                  transition: 'all 0.3s ease'
+                }}
+              >
+                <InstagramIcon sx={{ fontSize: '1.6rem' }} />
+              </IconButton>
             </Box>
-          </Grid>
+          </Box>
 
-          {/* Columna Géneros */}
-          <Grid item xs={12} sm={6} md={4}>
+          {/* Sección de newsletter revisada */}
+          <Box sx={{ 
+            maxWidth: { xs: '100%', md: '30%' },
+            order: { xs: 2, md: 3 }
+          }}>
             <Typography 
               variant="h6" 
-              gutterBottom
               sx={{ 
                 fontWeight: 700,
                 color: textColor,
-                mb: 3,
+                mb: 2.5,
                 display: 'flex',
                 alignItems: 'center',
+                position: 'relative',
+                pl: 2,
                 '&::before': {
                   content: '""',
+                  position: 'absolute',
+                  left: 0,
                   display: 'inline-block',
                   width: '4px',
-                  height: '18px',
-                  borderRadius: '2px',
+                  height: '20px',
+                  borderRadius: '4px',
                   backgroundColor: accentColor,
-                  marginRight: '10px'
                 }
               }}
             >
-              Géneros Literarios
+              Newsletter
             </Typography>
             
-            <Box component="ul" sx={{ pl: 0, listStyle: 'none', mb: 0 }}>
-              {['Fantasía y Ciencia Ficción', 'Novela Histórica', 'Misterio y Suspense', 'Literatura Contemporánea'].map((item, index) => (
-                <motion.div 
-                  key={index}
-                  variants={linkVariants}
-                  whileHover="hover"
-                >
-                  <Box component="li" sx={{ mb: 2 }}>
-                    <Link 
-                      href="#" 
-                      color="inherit" 
-                      underline="none"
-                      sx={{ 
-                        color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        transition: 'all 0.2s',
-                        '&:hover': {
-                          color: accentColor,
-                        }
-                      }}
-                    >
-                      <Box 
-                        component="span" 
-                        sx={{ 
-                          width: '5px', 
-                          height: '5px', 
-                          borderRadius: '50%', 
-                          bgcolor: 'currentColor',
-                          display: 'inline-block',
-                          mr: 1.5,
-                          opacity: 0.8
-                        }} 
-                      />
-                      {item}
-                    </Link>
-                  </Box>
-                </motion.div>
-              ))}
-            </Box>
-          </Grid>
-
-          {/* Columna Contact us */}
-          <Grid item xs={12} sm={12} md={4}>
-            <Typography 
-              variant="h6" 
-              gutterBottom
-              sx={{ 
-                fontWeight: 700,
-                color: textColor,
-                mb: 3,
-                display: 'flex',
-                alignItems: 'center',
-                '&::before': {
-                  content: '""',
-                  display: 'inline-block',
-                  width: '4px',
-                  height: '18px',
-                  borderRadius: '2px',
-                  backgroundColor: accentColor,
-                  marginRight: '10px'
-                }
-              }}
-            >
-              Contáctanos
+            <Typography variant="body2" sx={{ 
+              mb: 3, 
+              color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
+              lineHeight: 1.6
+            }}>
+              Suscríbete para recibir recomendaciones literarias, noticias sobre nuevos lanzamientos y contenido exclusivo directamente en tu bandeja de entrada.
             </Typography>
             
-            <Box sx={{ mb: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <Box 
-                  sx={{ 
-                    mr: 2, 
-                    width: '36px', 
-                    height: '36px', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center',
-                    borderRadius: '12px',
-                    backgroundColor: darkMode ? 'rgba(187, 134, 252, 0.1)' : 'rgba(98, 0, 234, 0.06)',
-                    color: accentColor
-                  }}
-                >
-                  <EmailIcon fontSize="small" />
-                </Box>
-                <Box>
-                  <Typography variant="body2" sx={{ color: darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)', fontSize: '0.75rem' }}>
-                    Email
-                  </Typography>
-                  <Typography variant="body1" sx={{ color: textColor, fontWeight: 500 }}>
-                    lectura@bookate.com
-                  </Typography>
-                </Box>
-              </Box>
-              
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <Box 
-                  sx={{ 
-                    mr: 2, 
-                    width: '36px', 
-                    height: '36px', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center',
-                    borderRadius: '12px',
-                    backgroundColor: darkMode ? 'rgba(187, 134, 252, 0.1)' : 'rgba(98, 0, 234, 0.06)',
-                    color: accentColor
-                  }}
-                >
-                  <LocalLibraryIcon fontSize="small" />
-                </Box>
-                <Box>
-                  <Typography variant="body2" sx={{ color: darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)', fontSize: '0.75rem' }}>
-                    Club de Lectura
-                  </Typography>
-                  <Typography variant="body1" sx={{ color: textColor, fontWeight: 500 }}>
-                    Jueves 18:00h (Online)
-                  </Typography>
-                </Box>
-              </Box>
-              
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <Box 
-                  sx={{ 
-                    mr: 2, 
-                    width: '36px', 
-                    height: '36px', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center',
-                    borderRadius: '12px',
-                    backgroundColor: darkMode ? 'rgba(187, 134, 252, 0.1)' : 'rgba(98, 0, 234, 0.06)',
-                    color: accentColor
-                  }}
-                >
-                  <LocationOnIcon fontSize="small" />
-                </Box>
-                <Box>
-                  <Typography variant="body2" sx={{ color: darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)', fontSize: '0.75rem' }}>
-                    Librería Asociada
-                  </Typography>
-                  <Typography variant="body1" sx={{ color: textColor, fontWeight: 500 }}>
-                    Librería Páginas, Ciudad de México
-                  </Typography>
-                </Box>
-              </Box>
-            </Box>
-            
-            <Typography variant="body2" sx={{ mb: 2, color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)' }}>
-              Síguenos para descubrir nuevas historias
-            </Typography>
-            
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <IconButton 
-                size="small"
+            <Box sx={{ 
+              display: 'flex', 
+              flexDirection: { xs: 'column', sm: 'column' },
+              gap: 1.5
+            }}>
+              <TextField
+                fullWidth
+                size="medium"
+                placeholder="Tu email"
+                variant="outlined"
                 sx={{ 
-                  backgroundColor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-                  color: darkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.7)',
-                  '&:hover': {
-                    backgroundColor: accentColor,
-                    color: 'white',
-                    transform: 'translateY(-2px)'
-                  },
-                  transition: 'all 0.2s'
-                }}
-              >
-                <FacebookIcon fontSize="small" />
-              </IconButton>
-              
-              <IconButton 
-                size="small"
-                sx={{ 
-                  backgroundColor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-                  color: darkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.7)',
-                  '&:hover': {
-                    backgroundColor: accentColor,
-                    color: 'white',
-                    transform: 'translateY(-2px)'
-                  },
-                  transition: 'all 0.2s'
-                }}
-              >
-                <TwitterIcon fontSize="small" />
-              </IconButton>
-              
-              <IconButton 
-                size="small"
-                sx={{ 
-                  backgroundColor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-                  color: darkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.7)',
-                  '&:hover': {
-                    backgroundColor: accentColor,
-                    color: 'white',
-                    transform: 'translateY(-2px)'
-                  },
-                  transition: 'all 0.2s'
-                }}
-              >
-                <InstagramIcon fontSize="small" />
-              </IconButton>
-              
-              <IconButton 
-                size="small"
-                sx={{ 
-                  backgroundColor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-                  color: darkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.7)',
-                  '&:hover': {
-                    backgroundColor: accentColor,
-                    color: 'white',
-                    transform: 'translateY(-2px)'
-                  },
-                  transition: 'all 0.2s'
-                }}
-              >
-                <PinterestIcon fontSize="small" />
-              </IconButton>
-            </Box>
-
-            <Box sx={{ mt: 3 }}>
-              <Typography variant="body2" sx={{ mb: 1.5, color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)' }}>
-                Suscríbete a nuestra newsletter literaria
-              </Typography>
-              
-              <Box sx={{ display: 'flex' }}>
-                <TextField
-                  size="small"
-                  placeholder="Tu email"
-                  variant="outlined"
-                  sx={{ 
-                    mr: 1,
-                    '& .MuiOutlinedInput-root': {
-                      backgroundColor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
-                      borderRadius: '8px',
-                      '& fieldset': {
-                        borderColor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-                      },
-                      '&:hover fieldset': {
-                        borderColor: darkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
-                      },
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.02)',
+                    borderRadius: '10px',
+                    '& fieldset': {
+                      borderColor: darkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)',
+                      borderWidth: '1px',
                     },
-                    '& .MuiInputBase-input': {
-                      color: textColor,
-                      fontSize: '0.875rem',
+                    '&:hover fieldset': {
+                      borderColor: darkMode ? 'rgba(187,134,252,0.5)' : 'rgba(98,0,234,0.5)',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: accentColor,
+                      borderWidth: '1px',
                     }
-                  }}
-                />
-                <Button 
-                  variant="contained"
-                  size="small"
-                  sx={{ 
-                    backgroundColor: accentColor,
-                    color: 'white',
-                    borderRadius: '8px',
-                    textTransform: 'none',
-                    '&:hover': {
-                      backgroundColor: darkMode ? '#c89dfd' : '#5000d3',
-                    }
-                  }}
-                >
-                  Suscribir
-                </Button>
-              </Box>
-            </Box>
-          </Grid>
-        </Grid>
-        
-        <Divider sx={{ my: 4, borderColor: darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' }} />
-        
-        <Box sx={{ 
-          display: 'flex', 
-          flexDirection: { xs: 'column', sm: 'row' },
-          justifyContent: 'space-between',
-          alignItems: { xs: 'center', sm: 'center' },
-          gap: { xs: 2, sm: 0 }
-        }}>
-          <Typography variant="body2" sx={{ color: darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)' }}>
-            © 2023 Bookate - Todos los derechos literarios reservados
-          </Typography>
-          
-          <Box sx={{ display: 'flex', gap: 3 }}>
-            {['Términos', 'Privacidad', 'Política Editorial'].map((item, index) => (
-              <Typography 
-                key={index}
-                variant="body2" 
-                component={Link} 
-                href="#"
-                sx={{ 
-                  color: darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)',
-                  textDecoration: 'none',
-                  '&:hover': {
-                    color: accentColor,
-                    textDecoration: 'none'
+                  },
+                  '& .MuiInputBase-input': {
+                    color: textColor,
+                    padding: '14px 16px',
                   }
                 }}
+              />
+              <Button 
+                variant="contained"
+                fullWidth
+                sx={{ 
+                  backgroundColor: accentColor,
+                  color: 'white',
+                  borderRadius: '10px',
+                  textTransform: 'none',
+                  padding: '12px 20px',
+                  fontWeight: 600,
+                  letterSpacing: 0.3,
+                  boxShadow: darkMode 
+                    ? '0 4px 12px rgba(187,134,252,0.25)'
+                    : '0 4px 12px rgba(98,0,234,0.15)',
+                  '&:hover': {
+                    backgroundColor: darkMode ? '#c89dfd' : '#5000d3',
+                    transform: 'translateY(-2px)',
+                    boxShadow: darkMode 
+                      ? '0 6px 15px rgba(187,134,252,0.35)'
+                      : '0 6px 15px rgba(98,0,234,0.25)',
+                  },
+                  transition: 'all 0.25s ease'
+                }}
               >
-                {item}
-              </Typography>
-            ))}
+                Suscribirme ahora
+              </Button>
+            </Box>
           </Box>
         </Box>
       </Container>
       
+      {/* Botón de scroll mejorado */}
       <Fade in={isVisible}>
         <Box
           onClick={scrollToTop}
+          role="button"
+          aria-label="Volver arriba"
+          tabIndex={0}
           sx={{
             position: 'fixed',
             bottom: 30,
             right: 30,
-            width: '40px',
-            height: '40px',
+            width: '45px',
+            height: '45px',
             borderRadius: '12px',
             backgroundColor: accentColor,
             display: 'flex',
@@ -568,14 +352,20 @@ export default function Footer({ darkMode = false }) {
             color: '#fff',
             zIndex: 10,
             boxShadow: darkMode 
-              ? '0 4px 20px rgba(187, 134, 252, 0.3)' 
-              : '0 4px 20px rgba(98, 0, 234, 0.2)',
-            transition: 'all 0.3s ease',
+              ? '0 4px 20px rgba(187, 134, 252, 0.35)' 
+              : '0 4px 20px rgba(98, 0, 234, 0.25)',
+            transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
             '&:hover': {
-              transform: 'translateY(-3px)',
+              transform: 'translateY(-5px)',
               boxShadow: darkMode 
-                ? '0 6px 20px rgba(187, 134, 252, 0.4)' 
-                : '0 6px 20px rgba(98, 0, 234, 0.3)',
+                ? '0 8px 25px rgba(187, 134, 252, 0.45)' 
+                : '0 8px 25px rgba(98, 0, 234, 0.35)',
+            },
+            '&:focus': {
+              outline: darkMode 
+                ? '2px solid rgba(187, 134, 252, 0.5)'
+                : '2px solid rgba(98, 0, 234, 0.5)',
+              outlineOffset: '2px'
             }
           }}
         >
