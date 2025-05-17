@@ -1,8 +1,8 @@
 import axios from 'axios';
 
 // Acceso a las variables de entorno públicas
-const AIRTABLE_API_KEY = process.env.NEXT_PUBLIC_AIRTABLE_API_KEY;
-const AIRTABLE_BASE_ID = process.env.NEXT_PUBLIC_AIRTABLE_BASE_ID;
+const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY;
+const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID;
 
 // Cliente para interactuar directamente con Airtable API
 const airtable = {
