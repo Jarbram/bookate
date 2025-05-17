@@ -6,9 +6,22 @@ import PostDetail from '@/components/Posts/PostDetail';
 import Footer from '@/components/Footer/Footer';
 import airtable from '@/lib/airtable';
 
+// Función para deserializar los campos del post
+function deserializePostFields(post) {
+  if (!post) return null;
+  
+  return {
+    ...post,
+    // Restaurar campos serializados
+    featuredImage: typeof post.featuredImage === 'string' && post.featuredImage.startsWith('[{') 
+      ? JSON.parse(post.featuredImage) 
+      : post.featuredImage
+  };
+}
+
 // Componente cliente que recibe el post del servidor como prop
 export default function PostPageClient({ initialPost, slug }) {
-  const [post, setPost] = useState(initialPost);
+  const [post, setPost] = useState(initialPost ? deserializePostFields(initialPost) : null);
   const [loading, setLoading] = useState(!initialPost);
 
   // Si no tenemos el post inicial o queremos actualizarlo con datos frescos
@@ -19,7 +32,7 @@ export default function PostPageClient({ initialPost, slug }) {
         try {
           setLoading(true);
           const postData = await airtable.getPostBySlug(slug);
-          setPost(postData);
+          setPost(deserializePostFields(postData));
         } catch (error) {
           console.error('Error al cargar el post:', error);
         } finally {

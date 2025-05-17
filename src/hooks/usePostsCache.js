@@ -25,7 +25,6 @@ export default function usePostsCache() {
         const { posts, timestamp } = JSON.parse(cachedData);
         // Si el caché es menor a 10 minutos, usarlo (ampliado de 5 a 10 minutos)
         if (Date.now() - timestamp < 10 * 60 * 1000) {
-          console.log('Usando caché de posts:', posts.length);
           setAllPosts(posts);
           setLastUpdated(timestamp);
           setIsLoading(false);
@@ -36,7 +35,6 @@ export default function usePostsCache() {
       }
       
       // Implementar carga por lotes para grandes volúmenes
-      console.log('Cargando posts desde la API con enfoque por lotes');
       let allLoadedPosts = [];
       let batchSize = 100;
       let offset = 0;
@@ -48,7 +46,6 @@ export default function usePostsCache() {
       
       while (hasMore && batchCount < MAX_BATCHES) {
         batchCount++;
-        console.log(`Cargando lote ${batchCount}/${MAX_BATCHES}...`);
         
         try {
           const posts = await airtable.getPosts({ 
@@ -76,7 +73,6 @@ export default function usePostsCache() {
             
             // Limitar la carga masiva a un máximo razonable
             if (allLoadedPosts.length >= 500) {
-              console.log('Alcanzado límite de carga máxima (500 posts)');
               hasMore = false;
             }
           } else {
@@ -97,7 +93,7 @@ export default function usePostsCache() {
           index: postIndex
         }));
       } catch (err) {
-        console.warn('No se pudo guardar en sessionStorage, posiblemente por límite de tamaño:', err);
+        // Error al guardar en sessionStorage, continuar
       }
       
       setAllPosts(allLoadedPosts);
@@ -209,16 +205,6 @@ export default function usePostsCache() {
   const loadMorePosts = useCallback(() => {
     return loadPosts(true); // Forzar recarga
   }, [loadPosts]);
-  
-  useEffect(() => {
-    console.log('Estado actual de posts:', {
-      totalPosts: allPosts.length,
-      hayDatos: allPosts.length > 0,
-      primerPost: allPosts[0] || 'No hay posts',
-      isLoading,
-      lastUpdated
-    });
-  }, [allPosts, isLoading, lastUpdated]);
   
   return {
     allPosts,

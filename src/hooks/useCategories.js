@@ -23,17 +23,13 @@ export default function useCategories({ onCategoryChange }) {
   
   // Manejo de selección de categoría con acción instantánea
   const handleCategoryClick = useCallback((categoryName) => {
-    console.log('Categoría seleccionada:', categoryName);
-    
     // Acción instantánea: establecer la categoría inmediatamente
     if (currentCategory === categoryName) {
-      console.log('Eliminando filtro de categoría');
       const params = new URLSearchParams(searchParams.toString());
       params.delete('category');
       params.delete('page'); // Aseguramos que volvemos a página 1
       router.push(`?${params.toString()}`, { scroll: false }); // Evita scroll automático
     } else {
-      console.log('Estableciendo filtro de categoría:', categoryName);
       const params = new URLSearchParams(searchParams.toString());
       params.set('category', categoryName);
       params.delete('page'); // Aseguramos que volvemos a página 1
@@ -76,7 +72,6 @@ export default function useCategories({ onCategoryChange }) {
       
       // Obtener todos los posts para extraer categorías
       const allPosts = await airtable.getPosts({ limit: 100 });
-      console.log(`Procesando ${allPosts.length} posts para extraer categorías`);
       
       // Extraer categorías con mejor normalización
       const categoryMap = {};
@@ -106,8 +101,6 @@ export default function useCategories({ onCategoryChange }) {
       
       // Ordenar por cantidad de posts (mayor a menor)
       categoryArray.sort((a, b) => b.count - a.count);
-      
-      console.log(`Encontradas ${categoryArray.length} categorías únicas`);
       
       // Guardar en sessionStorage
       sessionStorage.setItem('blogCategories', JSON.stringify({

@@ -210,15 +210,14 @@ export default function PostGrid() {
     setIsUpdatingUI(true);
   }, []);
   
-  const handlePostClick = useCallback((post, event) => {
-    event.preventDefault();
+  const handlePostClick = useCallback((post) => {
     setSelectedPostId(post.id);
     setIsNavigating(true);
     
-    // Usar router.push en lugar de window.location para mejor rendimiento
+    // Usar una animación más sofisticada antes de navegar
     setTimeout(() => {
       router.push(`/post/${post.slug}`);
-    }, 350);
+    }, 600); // Aumentamos ligeramente el tiempo para permitir la animación completa
   }, [router]);
 
   // Optimización: Cargar preferencia de viewMode desde localStorage al inicio
@@ -507,37 +506,77 @@ export default function PostGrid() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: 'rgba(255,255,255,0.8)',
+            backgroundColor: 'rgba(255,255,255,0.92)',
             zIndex: 9999,
-            backdropFilter: 'blur(4px)',
-            transition: 'all 0.3s ease-in-out'
+            backdropFilter: 'blur(8px)', // Aumentamos el desenfoque
+            transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)' // Transición más suave
           }}
         >
-          <Box sx={{ textAlign: 'center' }}>
-            <CircularProgress 
-              size={60} 
-              thickness={4}
-              sx={{ 
-                color: accentColor,
-                mb: 2
-              }} 
-            />
-            <Typography 
-              variant="h6" 
-              sx={{ 
-                fontWeight: 600,
-                color: accentColor,
-                animation: 'pulse 1.5s infinite',
-                '@keyframes pulse': {
-                  '0%': { opacity: 0.6 },
-                  '50%': { opacity: 1 },
-                  '100%': { opacity: 0.6 }
-                }
-              }}
-            >
-              Cargando artículo...
-            </Typography>
-          </Box>
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+          >
+            <Box sx={{ textAlign: 'center' }}>
+              <Box sx={{ position: 'relative', mb: 3, height: 70, width: 70, mx: 'auto' }}>
+                <CircularProgress 
+                  size={70} 
+                  thickness={3}
+                  sx={{ 
+                    color: alpha(accentColor, 0.3),
+                    position: 'absolute',
+                    left: 0,
+                  }} 
+                />
+                <CircularProgress 
+                  size={70} 
+                  thickness={3}
+                  sx={{ 
+                    color: accentColor,
+                    position: 'absolute',
+                    left: 0,
+                    animationDuration: '1s',
+                  }} 
+                />
+              </Box>
+              <Typography 
+                variant="h6" 
+                sx={{ 
+                  fontWeight: 600,
+                  color: accentColor,
+                  position: 'relative',
+                  '&::after': {
+                    content: '""',
+                    position: 'absolute',
+                    bottom: -8,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    width: '40px',
+                    height: '3px',
+                    borderRadius: '2px',
+                    backgroundColor: alpha(accentColor, 0.3),
+                  }
+                }}
+              >
+                Cargando artículo
+              </Typography>
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  mt: 2,
+                  color: alpha(textColor, 0.6),
+                  animation: 'pulseText 1.5s infinite',
+                  '@keyframes pulseText': {
+                    '0%': { opacity: 0.6 },
+                    '50%': { opacity: 1 },
+                    '100%': { opacity: 0.6 }
+                  }
+                }}
+              >
+                Preparando contenido...
+              </Typography>
+            </Box>
+          </motion.div>
         </Box>
       )}
       
@@ -584,20 +623,26 @@ export default function PostGrid() {
             >
               <Box 
                 sx={{ 
-                  transform: selectedPostId === post.id ? 'scale(0.97)' : 'scale(1)',
+                  transform: selectedPostId === post.id 
+                    ? 'scale(0.95) translateY(-10px)' // Efecto mejorado cuando se selecciona
+                    : 'scale(1) translateY(0)',
                   opacity: isNavigating ? 
-                    (selectedPostId === post.id ? 1 : 0.5) : 1,
-                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    (selectedPostId === post.id ? 1 : 0.3) : 1, // Mayor contraste
+                  transition: 'all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1)', // Curva de animación mejorada
                   position: 'relative',
                   zIndex: selectedPostId === post.id ? 2 : 1,
                   width: { xs: '90%', sm: '100%' },
                   maxWidth: { xs: '350px', sm: 'none' },
+                  // Añadir un efecto de elevación si es seleccionado
+                  boxShadow: selectedPostId === post.id 
+                    ? '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)'
+                    : 'none',
                 }}
               >
                 <MemoizedPostCard 
                   post={post} 
                   viewMode={viewMode}
-                  onClick={(e) => handlePostClick(post, e)}
+                  onClick={() => handlePostClick(post)}
                   isSelected={selectedPostId === post.id}
                 />
               </Box>

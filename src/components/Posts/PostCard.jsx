@@ -17,6 +17,7 @@ import Image from 'next/image';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import { motion } from 'framer-motion';
+import Link from 'next/link';
 
 // Función para estandarizar las categorías (movida fuera del componente)
 const getCategoriesArray = (categories) => {
@@ -116,9 +117,11 @@ const PostCardSkeleton = ({ viewMode = 'grid' }) => {
 
 export default function PostCard({ post, viewMode = 'grid', onClick, isSelected = false }) {
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const [hovering, setHovering] = useState(false);
   const [contentLoaded, setContentLoaded] = useState(false);
   const [loadingStarted, setLoadingStarted] = useState(false);
+  const [isClicked, setIsClicked] = useState(false);
   
   // Colores primarios del tema
   const accentColor = '#6200ea';
@@ -163,7 +166,6 @@ export default function PostCard({ post, viewMode = 'grid', onClick, isSelected 
   }, [post.publishDate, post.date]);
   
   // Verificar campos y usar valores por defecto
-  const imageUrl = post.featuredImage || 'https://via.placeholder.com/800x600?text=Imagen+no+disponible';
   const postViews = post.views || 0;
   
   // Procesar categorías con formato estandarizado
@@ -171,6 +173,58 @@ export default function PostCard({ post, viewMode = 'grid', onClick, isSelected 
   
   // Gradiente animado para el hover
   const hoverGradient = `linear-gradient(130deg, ${accentColor}, transparent 70%)`;
+  
+  // Determinar la URL de la imagen específicamente para campos attachment de Airtable
+  const imageUrl = useMemo(() => {
+    const defaultImage = 'https://via.placeholder.com/800x600?text=Imagen+no+disponible';
+    
+    // Función específica para extraer URL de campos attachment
+    const extractAttachmentUrl = (attachmentField) => {
+      if (!attachmentField) return null;
+      
+      // Formato típico de campo attachment: array de objetos con propiedades como url, filename, etc.
+      if (Array.isArray(attachmentField) && attachmentField.length > 0) {
+        // Acceso a la URL principal del attachment
+        if (attachmentField[0] && attachmentField[0].url) {
+          return attachmentField[0].url;
+        }
+        
+        // Acceso a thumbnails si están disponibles
+        if (attachmentField[0] && attachmentField[0].thumbnails && attachmentField[0].thumbnails.large) {
+          return attachmentField[0].thumbnails.large.url;
+        }
+      }
+      
+      // Para casos donde ya se ha extraído la URL (cadena directa)
+      if (typeof attachmentField === 'string') {
+        return attachmentField;
+      }
+      
+      return null;
+    };
+    
+    // Usar solo featuredImage como fuente de imagen
+    return extractAttachmentUrl(post.featuredImage) || defaultImage;
+  }, [post]);
+  
+  // Manejar el clic con animación
+  const handleCardClick = () => {
+    setIsClicked(true);
+    // Llamar al onClick prop después de un pequeño retraso para mostrar la animación
+    if (onClick) {
+      onClick(post);
+    }
+  };
+  
+  // Resetear el estado de clic después de la animación
+  useEffect(() => {
+    if (isClicked) {
+      const timer = setTimeout(() => {
+        setIsClicked(false);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isClicked]);
   
   // Si no hemos iniciado la carga, mostrar skeleton completo
   if (!loadingStarted) {
@@ -233,8 +287,8 @@ export default function PostCard({ post, viewMode = 'grid', onClick, isSelected 
                 alt={post.title || 'Imagen del artículo'}
                 fill
                 sizes="(max-width: 600px) 100vw, (max-width: 960px) 50vw, 33vw"
-                priority={false}
-                loading="lazy"
+                priority={viewMode === 'featured' || isSelected}
+                loading={viewMode === 'featured' || isSelected ? 'eager' : 'lazy'}
                 style={{ 
                   objectFit: 'cover',
                 }}
@@ -360,114 +414,94 @@ export default function PostCard({ post, viewMode = 'grid', onClick, isSelected 
   return (
     <Fade in={true} timeout={600}>
       <Card 
-        component={motion.div}
-        whileHover={{ 
-          y: isSelected ? 0 : -8,
-          boxShadow: isSelected ? 
-            '0 8px 32px rgba(98, 0, 234, 0.2)' : 
-            '0 12px 24px rgba(98, 0, 234, 0.08)',
-          transition: { duration: 0.2 }
-        }}
         sx={{ 
           height: '100%', 
-          display: 'flex', 
-          flexDirection: isList ? 'row' : 'column',
-          transition: 'all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1)',
-          overflow: 'visible',
           position: 'relative',
+          transition: 'all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)',
+          transform: isClicked ? 'scale(0.98)' : isSelected ? 'scale(0.97)' : 'scale(1)',
+          overflow: 'visible',
           borderRadius: '16px',
-          boxShadow: isSelected ? 
-            '0 8px 32px rgba(98, 0, 234, 0.2)' : 
-            '0 4px 20px rgba(0,0,0,0.03)',
-          border: isSelected ? 
-            `1px solid ${alpha(accentColor, 0.3)}` : 
-            '1px solid rgba(0,0,0,0.03)',
-          maxWidth: '100%',
-          backgroundColor: isSelected ? alpha(accentColor, 0.04) : cardBgColor,
-          transform: isSelected ? 'scale(0.97)' : 'scale(1)',
-          '&::before': {
+          boxShadow: isSelected
+            ? '0 10px 30px rgba(0,0,0,0.12), 0 5px 10px rgba(0,0,0,0.05)'
+            : '0 4px 20px rgba(0,0,0,0.03)',
+          border: isSelected
+            ? `1px solid ${alpha(accentColor, 0.3)}`
+            : '1px solid rgba(0,0,0,0.03)',
+          backgroundColor: cardBgColor,
+          '&::after': isSelected ? {
             content: '""',
             position: 'absolute',
-            inset: -1,
-            borderRadius: '17px',
-            padding: '1px',
-            background: isSelected ? 
-              `linear-gradient(130deg, ${accentColor}, transparent 50%)` : 
-              (hovering ? hoverGradient : 'transparent'),
-            WebkitMask: 
-              'linear-gradient(#fff 0 0) content-box, ' +
-              'linear-gradient(#fff 0 0)',
-            WebkitMaskComposite: 'xor',
-            maskComposite: 'exclude',
-            opacity: (isSelected || hovering) ? 1 : 0,
-            transition: 'all 0.3s ease',
-            zIndex: 0
-          }
+            top: -5,
+            left: -5,
+            right: -5,
+            bottom: -5,
+            borderRadius: '20px',
+            border: `2px solid ${alpha(accentColor, 0.15)}`,
+            pointerEvents: 'none',
+            zIndex: 0,
+            animation: 'pulse 2s infinite',
+            '@keyframes pulse': {
+              '0%': { opacity: 0.4 },
+              '50%': { opacity: 0.7 },
+              '100%': { opacity: 0.4 }
+            }
+          } : {}
         }}
-        onMouseEnter={() => setHovering(true)}
-        onMouseLeave={() => setHovering(false)}
       >
-        <CardActionArea 
-          component="a" 
-          href={`/post/${post.slug}`}
-          onClick={onClick}
-          sx={{ 
-            height: '100%', 
-            display: 'flex', 
-            flexDirection: isList ? 'row' : 'column', 
-            alignItems: 'stretch',
-            borderRadius: '16px',
-            overflow: 'hidden',
-            zIndex: 1
+        <Link 
+          href={`/post/${post.slug}`} 
+          passHref
+          style={{
+            textDecoration: 'none',
+            display: 'block',
+            height: '100%',
+          }}
+          onClick={(e) => {
+            e.preventDefault(); // Prevenir la navegación predeterminada
+            handleCardClick(); // Usar nuestro manejador personalizado
           }}
         >
-          <Box 
+          <CardActionArea 
             sx={{ 
-              position: 'relative', 
-              height: isList ? 140 : 200, 
-              width: isList ? 200 : '100%',
+              height: '100%', 
+              display: 'flex', 
+              flexDirection: isList ? 'row' : 'column', 
+              alignItems: 'stretch',
+              borderRadius: '16px',
               overflow: 'hidden',
-              flexShrink: 0,
-              borderRadius: isList ? '16px 0 0 16px' : '16px 16px 0 0'
+              zIndex: 1,
+              transition: 'all 0.3s ease',
+              // Efecto de pulso mejorado cuando está seleccionado
+              background: isSelected ? 
+                `linear-gradient(130deg, ${alpha(accentColor, 0.03)}, transparent 70%)` : 
+                'transparent'
             }}
           >
-            {!imageLoaded && (
-              <Skeleton 
-                variant="rectangular" 
-                width="100%" 
-                height="100%" 
-                animation="wave"
-                sx={{ 
-                  backgroundColor: alpha('#000', 0.04),
-                  transform: 'none'
-                }}
-              />
-            )}
             <Box 
               sx={{ 
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '100%',
-                opacity: imageLoaded ? 1 : 0,
-                transition: 'opacity 0.3s ease'
+                position: 'relative', 
+                height: isList ? 140 : 200, 
+                width: isList ? 200 : '100%',
+                overflow: 'hidden',
+                flexShrink: 0,
+                borderRadius: isList ? '16px 0 0 16px' : '16px 16px 0 0',
+                backgroundColor: alpha(accentColor, 0.05) // Fondo mientras carga
               }}
             >
-              <Image
-                src={imageUrl}
-                alt={post.title || 'Imagen del artículo'}
-                fill
-                sizes="(max-width: 600px) 100vw, (max-width: 960px) 50vw, 33vw"
-                priority={false}
-                loading="lazy"
-                style={{ 
-                  objectFit: 'cover',
-                  transition: 'transform 0.5s ease',
-                  transform: hovering ? 'scale(1.05)' : 'scale(1)'
-                }}
-                onLoad={() => setImageLoaded(true)}
-              />
+              {!imageLoaded && !imageError && (
+                <Skeleton 
+                  variant="rectangular" 
+                  width="100%" 
+                  height="100%" 
+                  animation="wave"
+                  sx={{ 
+                    backgroundColor: alpha('#000', 0.04),
+                    transform: 'none'
+                  }}
+                />
+              )}
+              
+              {/* Contenedor de imagen con formato Airtable específico */}
               <Box 
                 sx={{ 
                   position: 'absolute',
@@ -475,163 +509,199 @@ export default function PostCard({ post, viewMode = 'grid', onClick, isSelected 
                   left: 0,
                   width: '100%',
                   height: '100%',
-                  background: 'linear-gradient(to top, rgba(0,0,0,0.5), transparent 60%)',
-                }}
-              />
-            </Box>
-            
-            {/* Categorías mejoradas */}
-            {categoriesArray.length > 0 && (
-              <Box
-                sx={{
-                  position: 'absolute',
-                  bottom: 8,
-                  left: 8,
-                  zIndex: 2,
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  gap: 0.5
+                  opacity: imageLoaded ? 1 : 0,
+                  transition: 'opacity 0.3s ease',
+                  display: imageError ? 'none' : 'block'
                 }}
               >
-                {categoriesArray.slice(0, 2).map((category, index) => (
-                  <Chip
-                    key={index}
-                    label={category}
-                    size="small"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      const params = new URLSearchParams();
-                      params.set('category', category);
-                      window.location.href = `/?${params.toString()}`;
-                    }}
-                    sx={{
-                      height: '20px',
-                      fontSize: '0.65rem',
-                      fontWeight: 500,
-                      borderRadius: '4px',
-                      backgroundColor: alpha(accentColor, 0.8),
-                      color: 'white',
-                      backdropFilter: 'blur(4px)',
-                      border: '1px solid rgba(255,255,255,0.15)',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      '&:hover': {
-                        backgroundColor: accentColor,
-                        transform: 'translateY(-2px)'
-                      }
-                    }}
-                  />
-                ))}
+                <Image
+                  src={imageUrl}
+                  alt={post.title || 'Imagen del artículo'}
+                  fill
+                  sizes="(max-width: 600px) 100vw, (max-width: 960px) 50vw, 33vw"
+                  priority={viewMode === 'featured' || isSelected}
+                  loading={viewMode === 'featured' || isSelected ? 'eager' : 'lazy'}
+                  style={{ 
+                    objectFit: 'cover',
+                    transition: 'transform 0.5s ease',
+                    transform: hovering ? 'scale(1.05)' : 'scale(1)',
+                  }}
+                  onLoad={() => setImageLoaded(true)}
+                  onError={() => {
+                    setImageError(true);
+                    setImageLoaded(true); // Para quitar el skeleton
+                  }}
+                />
               </Box>
-            )}
-          </Box>
+              
+              {/* Gradiente decorativo sobre la imagen */}
+              {imageLoaded && !imageError && (
+                <Box 
+                  sx={{ 
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    background: 'linear-gradient(to top, rgba(0,0,0,0.5), transparent 60%)',
+                    pointerEvents: 'none'
+                  }}
+                />
+              )}
+              
+              {/* Categorías mejoradas */}
+              {categoriesArray.length > 0 && (
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    bottom: 8,
+                    left: 8,
+                    zIndex: 2,
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: 0.5
+                  }}
+                >
+                  {categoriesArray.slice(0, 2).map((category, index) => (
+                    <Chip
+                      key={index}
+                      label={category}
+                      size="small"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const params = new URLSearchParams();
+                        params.set('category', category);
+                        window.location.href = `/?${params.toString()}`;
+                      }}
+                      sx={{
+                        height: '20px',
+                        fontSize: '0.65rem',
+                        fontWeight: 500,
+                        borderRadius: '4px',
+                        backgroundColor: alpha(accentColor, 0.8),
+                        color: 'white',
+                        backdropFilter: 'blur(4px)',
+                        border: '1px solid rgba(255,255,255,0.15)',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        '&:hover': {
+                          backgroundColor: accentColor,
+                          transform: 'translateY(-2px)'
+                        }
+                      }}
+                    />
+                  ))}
+                </Box>
+              )}
+            </Box>
 
-          <CardContent 
-            sx={{ 
-              flexGrow: 1, 
-              p: 2.5,
-              pb: '16px !important',
-              display: 'flex',
-              flexDirection: 'column'
-            }}
-          >
-            <Typography 
-              gutterBottom 
-              variant="h6" 
-              component="h2"
+            <CardContent 
               sx={{ 
-                fontWeight: 700, 
-                fontSize: isList ? '0.95rem' : '1.1rem',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                display: '-webkit-box',
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
-                mb: 1.5,
-                lineHeight: 1.3,
-                color: textColor
+                flexGrow: 1, 
+                p: 2.5,
+                pb: '16px !important',
+                display: 'flex',
+                flexDirection: 'column'
               }}
             >
-              {post.title}
-            </Typography>
-            
-            {post.excerpt && (
               <Typography 
-                variant="body2" 
-                color="text.secondary"
-                sx={{
+                gutterBottom 
+                variant="h6" 
+                component="h2"
+                sx={{ 
+                  fontWeight: 700, 
+                  fontSize: isList ? '0.95rem' : '1.1rem',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   display: '-webkit-box',
                   WebkitLineClamp: 2,
                   WebkitBoxOrient: 'vertical',
-                  lineHeight: 1.5,
-                  opacity: 0.85,
-                  fontSize: '0.825rem',
-                  color: alpha('#000', 0.7),
-                  mb: 'auto',
-                  minHeight: isList ? 'auto' : '2.5rem'
+                  mb: 1.5,
+                  lineHeight: 1.3,
+                  color: textColor
                 }}
               >
-                {post.excerpt}
+                {post.title}
               </Typography>
-            )}
-            
-            <Divider sx={{ my: 1.5, borderColor: alpha('#000', 0.05) }} />
-            
-            <Box sx={{ 
-              display: 'flex', 
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              {post.author ? (
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Typography 
-                    variant="caption" 
-                    sx={{ 
-                      fontWeight: 500,
-                      fontSize: '0.75rem',
-                      color: alpha('#000', 0.75)
-                    }}
-                  >
-                    {post.author}
-                  </Typography>
-                </Box>
-              ) : null}
-                
+              
+              {post.excerpt && (
+                <Typography 
+                  variant="body2" 
+                  color="text.secondary"
+                  sx={{
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    lineHeight: 1.5,
+                    opacity: 0.85,
+                    fontSize: '0.825rem',
+                    color: alpha('#000', 0.7),
+                    mb: 'auto',
+                    minHeight: isList ? 'auto' : '2.5rem'
+                  }}
+                >
+                  {post.excerpt}
+                </Typography>
+              )}
+              
+              <Divider sx={{ my: 1.5, borderColor: alpha('#000', 0.05) }} />
+              
               <Box sx={{ 
                 display: 'flex', 
-                alignItems: 'center', 
-                ml: post.author ? 0 : 'auto'
+                justifyContent: 'space-between',
+                alignItems: 'center'
               }}>
+                {post.author ? (
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Typography 
+                      variant="caption" 
+                      sx={{ 
+                        fontWeight: 500,
+                        fontSize: '0.75rem',
+                        color: alpha('#000', 0.75)
+                      }}
+                    >
+                      {post.author}
+                    </Typography>
+                  </Box>
+                ) : null}
+                
                 <Box sx={{ 
                   display: 'flex', 
-                  alignItems: 'center',
-                  backgroundColor: alpha(accentColor, 0.05),
-                  borderRadius: '12px',
-                  padding: '2px 8px',
+                  alignItems: 'center', 
+                  ml: post.author ? 0 : 'auto'
                 }}>
-                  <CalendarTodayIcon sx={{
-                    fontSize: '0.7rem',
-                    color: alpha(accentColor, 0.7),
-                    mr: 0.5
-                  }} />
-                  <Typography 
-                    variant="caption" 
-                    sx={{ 
-                      fontWeight: 500,
+                  <Box sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center',
+                    backgroundColor: alpha(accentColor, 0.05),
+                    borderRadius: '12px',
+                    padding: '2px 8px',
+                  }}>
+                    <CalendarTodayIcon sx={{
                       fontSize: '0.7rem',
-                      color: alpha(accentColor, 0.8)
-                    }}
-                  >
-                    {getRelativeDate}
-                  </Typography>
+                      color: alpha(accentColor, 0.7),
+                      mr: 0.5
+                    }} />
+                    <Typography 
+                      variant="caption" 
+                      sx={{ 
+                        fontWeight: 500,
+                        fontSize: '0.7rem',
+                        color: alpha(accentColor, 0.8)
+                      }}
+                    >
+                      {getRelativeDate}
+                    </Typography>
+                  </Box>
                 </Box>
               </Box>
-            </Box>
-          </CardContent>
-        </CardActionArea>
+            </CardContent>
+          </CardActionArea>
+        </Link>
       </Card>
     </Fade>
   );

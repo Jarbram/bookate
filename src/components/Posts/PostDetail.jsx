@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
   Box, 
   Container, 
@@ -186,6 +186,38 @@ export default function PostDetail({ post }) {
   const categoriesArray = getCategoriesArray(post.categories);
   const tagsArray = getTagsArray(post.tags);
   const adPositions = getAdPositions(post.adPositions);
+  
+  // Extraer URL de imagen de forma segura (similar a PostCard)
+  const imageUrl = useMemo(() => {
+    const defaultImage = 'https://via.placeholder.com/1200x800?text=Imagen+no+disponible';
+    
+    // Función para extraer URL de campos attachment de Airtable
+    const extractAttachmentUrl = (attachmentField) => {
+      if (!attachmentField) return null;
+      
+      // Para campos attachment en formato array de objetos
+      if (Array.isArray(attachmentField) && attachmentField.length > 0) {
+        // Acceso a la URL principal
+        if (attachmentField[0] && attachmentField[0].url) {
+          return attachmentField[0].url;
+        }
+        
+        // Acceso a thumbnails si están disponibles
+        if (attachmentField[0] && attachmentField[0].thumbnails && attachmentField[0].thumbnails.large) {
+          return attachmentField[0].thumbnails.large.url;
+        }
+      }
+      
+      // Para casos donde ya se ha extraído la URL (cadena directa no vacía)
+      if (typeof attachmentField === 'string' && attachmentField.trim() !== '') {
+        return attachmentField;
+      }
+      
+      return null;
+    };
+    
+    return extractAttachmentUrl(post.featuredImage) || defaultImage;
+  }, [post.featuredImage]);
   
   // Fecha formateada
   const formattedDate = new Date(post.publishDate).toLocaleDateString('es-ES', {
@@ -409,8 +441,8 @@ export default function PostDetail({ post }) {
                 )}
                 
                 <Image
-                  src={post.featuredImage || 'https://via.placeholder.com/1200x800?text=Imagen+no+disponible'}
-                  alt={post.title}
+                  src={imageUrl}
+                  alt={post.title || 'Imagen del artículo'}
                   fill
                   priority
                   sizes="(max-width: 600px) 100vw, (max-width: 960px) 90vw, 1200px"

@@ -1,68 +1,112 @@
 import axios from 'axios';
-import { absoluteUrl } from '@/lib/utils';
 
-// Elimino los mockPosts y mockCategories
+// Acceso a las variables de entorno públicas
+const AIRTABLE_API_KEY = process.env.NEXT_PUBLIC_AIRTABLE_API_KEY;
+const AIRTABLE_BASE_ID = process.env.NEXT_PUBLIC_AIRTABLE_BASE_ID;
 
-// Cliente para interactuar con nuestras API routes
+// Cliente para interactuar directamente con Airtable API
 const airtable = {
   // Obtener todos los posts publicados con paginación mejorada
   async getPosts({ limit = 20, offset = 0, sortBy = 'publishDate', sortOrder = 'desc', category = '', search = '' }) {
     try {
-      // Añadir más logging para diagnóstico
-      console.log(`Iniciando petición getPosts con parámetros:`, { limit, offset, category, search });
+      // URL base de Airtable
+      const airtableApiUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/Posts`;
       
-      // Construir URL de la API con parámetros necesarios
-      let url = `/api/posts?limit=${limit}&offset=${offset}&sortBy=${sortBy}&sortOrder=${sortOrder}`;
+      // Función para escapar caracteres especiales
+      const escapeAirtableValue = (value) => {
+        if (!value) return '';
+        return value.replace(/'/g, "\\'").replace(/\\/g, "\\\\");
+      };
+      
+      // Crear objeto para parámetros de la consulta
+      let params = {
+        view: 'Grid view',
+        pageSize: limit,
+      };
+      
+      // Aplicar filtros a la consulta con escapado adecuado
+      let filterByFormula = "{status}='published'";
       
       if (category) {
-        url += `&category=${encodeURIComponent(category)}`;
+        const escapedCategory = escapeAirtableValue(category);
+        filterByFormula = `AND({status}='published', FIND('${escapedCategory}', {categoriesString}))`;
       }
       
       if (search) {
-        url += `&search=${encodeURIComponent(search)}`;
+        const escapedSearch = escapeAirtableValue(search);
+        // Búsqueda en título o contenido
+        filterByFormula = `AND({status}='published', OR(FIND('${escapedSearch}', LOWER({title})), FIND('${escapedSearch}', LOWER({content}))))`;
       }
       
-      console.log(`Llamando a API: ${url}`);
+      params.filterByFormula = filterByFormula;
       
-      // Usar fetch con timeout para evitar bloqueos
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 segundos de timeout
+      // Configurar ordenamiento
+      const sortField = sortBy === 'publishDate' ? 'publishDate' : sortBy;
+      params.sort = [{ field: sortField, direction: sortOrder === 'desc' ? 'desc' : 'asc' }];
       
-      try {
-        const response = await fetch(url, { signal: controller.signal });
-        clearTimeout(timeoutId);
-        
-        if (!response.ok) {
-          console.error(`Error en solicitud API: ${response.status} - ${response.statusText}`);
-          throw new Error(`Error HTTP: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        console.log(`Respuesta recibida con ${data.posts?.length || 0} posts`);
-        return data.posts || [];
-      } catch (error) {
-        console.error(`Error al procesar solicitud de posts: ${error.message}`);
-        throw error; // Re-lanzar para manejo en bloque catch exterior
-      }
+      // Configuración para la petición
+      const config = {
+        headers: {
+          'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        params: params
+      };
+      
+      // Realizar petición a Airtable
+      const response = await axios.get(airtableApiUrl, config);
+      
+      // Procesar respuesta
+      const records = response.data.records || [];
+      
+      // Aplicar paginación manualmente debido a limitaciones de la API de Airtable
+      const paginatedRecords = records.slice(offset, offset + limit);
+      
+      // Formatear los registros a formato esperado por la aplicación
+      const formattedPosts = paginatedRecords.map(record => {
+        const fields = record.fields;
+        return {
+          id: record.id,
+          title: fields.title || '',
+          slug: fields.slug || '',
+          content: fields.content || '',
+          excerpt: fields.excerpt || '',
+          featuredImage: fields.featuredImage || null,
+          publishDate: fields.publishDate || '',
+          author: fields.author || '',
+          categories: fields.categories || [],
+          tags: fields.tags || [],
+          status: fields.status || 'draft',
+          views: fields.views || 0
+        };
+      });
+      
+      return formattedPosts;
     } catch (error) {
-      console.error('Error al obtener posts:', error);
+      console.error('Error al obtener posts directamente de Airtable:', error);
+      
+      // Información de depuración adicional
+      if (error.response) {
+        console.error('Detalles de error de Airtable:', {
+          status: error.response.status,
+          data: error.response.data
+        });
+      }
       
       // Intentar usar caché como fallback
       if (typeof window !== 'undefined') {
         const cachedAllPosts = sessionStorage.getItem('posts_all_nosearch');
         if (cachedAllPosts) {
-          console.log('Usando datos de caché como respaldo tras error');
           const { posts } = JSON.parse(cachedAllPosts);
           return posts.slice(offset, offset + limit);
         }
       }
       
-      // Si todo falla, devolver array vacío pero mostrar error en consola
       return [];
     }
   },
   
-  // Obtener el conteo total de posts con caché
+  // Obtener el conteo total de posts directamente de Airtable
   async getPostsCount({ category = null, tag = null } = {}) {
     try {
       // Crear una clave única para el caché
@@ -73,82 +117,90 @@ const airtable = {
       if (cachedCount) {
         try {
           const { count, timestamp } = JSON.parse(cachedCount);
-          // Caché válido por 5 minutos
-          if (Date.now() - timestamp < 300000) {
-            console.log(`Usando conteo en caché para ${cacheKey}: ${count}`);
+          if (Date.now() - timestamp < 300000) { // 5 minutos
             return { total: count };
           }
         } catch (e) {
-          console.warn('Error al leer caché de conteo:', e);
+          // Continuar si hay error al leer caché
         }
       }
       
-      // Si hay categoría, debemos usar un enfoque diferente para contar con precisión
+      // URL base de Airtable
+      const airtableApiUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/Posts`;
+      
+      // Función para escapar caracteres especiales en la fórmula
+      const escapeAirtableValue = (value) => {
+        if (!value) return '';
+        // Escapar comillas simples duplicándolas y cualquier otro carácter especial
+        return value.replace(/'/g, "\\'").replace(/\\/g, "\\\\");
+      };
+      
+      // Crear fórmula de filtro con valores escapados
+      let filterByFormula = "{status}='published'";
+      
       if (category) {
-        // Para categorías, obtener todos los posts y contar después del filtrado
-        const allPosts = await this.getPosts({
-          limit: 1000,  // Número alto para obtener la mayoría de posts
-          offset: 0,
-          category
-        });
-        
-        const total = allPosts.length;
-        
-        // Guardar en caché
-        if (typeof window !== 'undefined') {
-          try {
-            sessionStorage.setItem(cacheKey, JSON.stringify({
-              count: total,
-              timestamp: Date.now()
-            }));
-          } catch (e) {
-            console.warn('Error al guardar caché de conteo:', e);
-          }
-        }
-        
-        return { total };
+        const escapedCategory = escapeAirtableValue(category);
+        filterByFormula = `AND({status}='published', FIND('${escapedCategory}', {categoriesString}))`;
       }
-      
-      // Sin categoría, usar el endpoint de conteo normal
-      let url = `/api/posts/count`;
       
       if (tag) {
-        url += `?tag=${encodeURIComponent(tag)}`;
+        const escapedTag = escapeAirtableValue(tag);
+        filterByFormula = `AND({status}='published', FIND('${escapedTag}', {tagsString}))`;
       }
       
-      console.log(`Obteniendo conteo desde: ${url}`);
-      
-      try {
-        const response = await axios.get(url);
-        
-        // Guardar en caché
-        if (typeof window !== 'undefined' && response.data.total) {
-          try {
-            sessionStorage.setItem(cacheKey, JSON.stringify({
-              count: response.data.total,
-              timestamp: Date.now()
-            }));
-          } catch (e) {
-            console.warn('Error al guardar caché de conteo:', e);
-          }
+      // Configuración para la petición
+      const config = {
+        headers: {
+          'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        params: {
+          filterByFormula,
+          view: 'Grid view',
+          fields: ['id'] // Solo necesitamos el ID para contar
         }
-        
-        return response.data;
-      } catch (error) {
-        console.error(`Error al obtener conteo desde API (${url}):`, error);
-        const fallbackEstimate = await this.estimatePostCount({ category, tag });
-        return { total: fallbackEstimate };
+      };
+      
+      console.log('Filtro aplicado:', filterByFormula); // Para depuración
+      
+      // Realizar petición a Airtable
+      const response = await axios.get(airtableApiUrl, config);
+      
+      // Contar registros
+      const total = response.data.records.length;
+      
+      // Guardar en caché
+      if (typeof window !== 'undefined') {
+        try {
+          sessionStorage.setItem(cacheKey, JSON.stringify({
+            count: total,
+            timestamp: Date.now()
+          }));
+        } catch (e) {
+          // Error al guardar en caché, continuar
+        }
       }
+      
+      return { total };
     } catch (error) {
-      console.error('Error general al obtener conteo de posts:', error);
-      return { total: 12 };
+      console.error('Error al obtener conteo directo de Airtable:', error);
+      
+      // Información de depuración adicional
+      if (error.response) {
+        console.error('Detalles de error de Airtable:', {
+          status: error.response.status,
+          data: error.response.data
+        });
+      }
+      
+      const fallbackEstimate = await this.estimatePostCount({ category, tag });
+      return { total: fallbackEstimate };
     }
   },
   
   // Método auxiliar para estimar el conteo total en caso de fallo
   async estimatePostCount({ category = null, tag = null } = {}) {
     try {
-      // Obtener un lote grande de posts para estimar
       const posts = await this.getPosts({
         limit: 20, 
         offset: 0,
@@ -156,51 +208,66 @@ const airtable = {
         tag
       });
       
-      // Si tenemos menos de 20, ese es probablemente el total
       if (posts.length < 20) {
         return posts.length;
       }
       
-      // De lo contrario, asumimos que hay más - devolvemos un valor mayor
       return Math.max(posts.length * 2, 30);
     } catch (error) {
       console.error('Error al estimar conteo de posts:', error);
-      return 12; // Valor predeterminado
+      return 12;
     }
   },
   
-  // Obtener un post específico por slug
+  // Obtener un post específico por slug directamente de Airtable
   async getPostBySlug(slug) {
     try {
-      // Verificamos si estamos en el cliente o en el servidor
-      if (typeof window === 'undefined') {
-        // Estamos en el servidor, usamos directamente el módulo
-        // Pero asegurémonos de obtener la exportación correcta
-        const { default: airtableServer } = require('./airtable-server');
-        
-        // Si el módulo es un objeto con getPostBySlug, úsalo directamente
-        if (airtableServer && typeof airtableServer.getPostBySlug === 'function') {
-          return await airtableServer.getPostBySlug(slug);
+      // URL base de Airtable
+      const airtableApiUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/Posts`;
+      
+      // Crear fórmula de filtro para buscar por slug
+      const filterByFormula = `AND({status}='published', {slug}='${slug}')`;
+      
+      // Configuración para la petición
+      const config = {
+        headers: {
+          'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        params: {
+          filterByFormula,
+          maxRecords: 1
         }
-        
-        // Como alternativa, intentamos acceder directamente al módulo importado
-        // ya que podría estar usando module.exports = {...}
-        const serverModule = require('./airtable-server');
-        if (typeof serverModule.getPostBySlug === 'function') {
-          return await serverModule.getPostBySlug(slug);
-        }
-        
-        // Si todo falla, buscar en los mockPosts
-        console.error('No se pudo encontrar el método getPostBySlug en airtable-server');
-        const mockPosts = require('./airtable-server').mockPosts || [];
-        return mockPosts.find(p => p.slug === slug) || null;
-      } else {
-        // Estamos en el cliente, usamos axios con la ruta relativa
-        const response = await axios.get(`/api/posts/${slug}`);
-        return response.data.post;
+      };
+      
+      // Realizar petición a Airtable
+      const response = await axios.get(airtableApiUrl, config);
+      
+      // Verificar si se encontró el post
+      if (!response.data.records || response.data.records.length === 0) {
+        return null;
       }
+      
+      // Formatear el registro
+      const record = response.data.records[0];
+      const fields = record.fields;
+      
+      return {
+        id: record.id,
+        title: fields.title || '',
+        slug: fields.slug || '',
+        content: fields.content || '',
+        excerpt: fields.excerpt || '',
+        featuredImage: fields.featuredImage || null,
+        publishDate: fields.publishDate || '',
+        author: fields.author || '',
+        categories: fields.categories || [],
+        tags: fields.tags || [],
+        status: fields.status || 'draft',
+        views: fields.views || 0
+      };
     } catch (error) {
-      console.error('Error al obtener post por slug:', error);
+      console.error(`Error al obtener post con slug ${slug} directamente de Airtable:`, error);
       return null;
     }
   },
@@ -208,11 +275,41 @@ const airtable = {
   // Obtener todas las categorías
   async getCategories() {
     try {
-      const response = await axios.get('/api/categories');
-      return response.data.categories;
+      // Obtener todos los posts para extraer categorías
+      const posts = await this.getPosts({ limit: 100 });
+      
+      // Extraer categorías únicas de los posts
+      const categoryMap = {};
+      
+      posts.forEach(post => {
+        if (post.categories) {
+          const categories = Array.isArray(post.categories) 
+            ? post.categories 
+            : post.categories.split(',').map(c => c.trim());
+          
+          categories.forEach(cat => {
+            if (cat) {
+              const formattedName = cat.charAt(0).toUpperCase() + cat.slice(1);
+              categoryMap[formattedName] = (categoryMap[formattedName] || 0) + 1;
+            }
+          });
+        }
+      });
+      
+      // Convertir a array para la respuesta
+      const categories = Object.entries(categoryMap).map(([name, count]) => ({ 
+        name, 
+        count,
+        slug: name.toLowerCase()
+      }));
+      
+      // Ordenar por cantidad de posts
+      categories.sort((a, b) => b.count - a.count);
+      
+      return categories;
     } catch (error) {
-      console.error('Error al obtener categorías:', error);
-      return []; // Devolvemos array vacío en lugar de mockData
+      console.error('Error al obtener categorías directamente de Airtable:', error);
+      return [];
     }
   },
   
@@ -227,25 +324,29 @@ const airtable = {
     }
   },
   
-  // Nuevo método para carga progresiva
+  // Método para carga progresiva de posts
   async getPostsBatch({ page = 1, batchSize = 20, sortBy = 'publishDate', sortOrder = 'desc' }) {
     try {
       const offset = (page - 1) * batchSize;
-      const url = `/api/posts/batch?page=${page}&batchSize=${batchSize}&sortBy=${sortBy}&sortOrder=${sortOrder}`;
       
-      console.log(`Solicitando lote #${page} (${batchSize} posts)`);
+      // Obtener posts para este lote
+      const posts = await this.getPosts({
+        limit: batchSize,
+        offset,
+        sortBy,
+        sortOrder
+      });
       
-      const response = await fetch(url);
+      // Obtener conteo total para saber si hay más
+      const { total } = await this.getPostsCount();
       
-      if (!response.ok) {
-        throw new Error(`Error HTTP: ${response.status}`);
-      }
+      // Determinar si hay más posts para cargar
+      const hasMore = offset + posts.length < total;
       
-      const data = await response.json();
       return {
-        posts: data.posts || [],
-        hasMore: data.hasMore || false,
-        total: data.total || 0
+        posts,
+        hasMore,
+        total
       };
     } catch (error) {
       console.error('Error al obtener lote de posts:', error);
