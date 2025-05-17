@@ -1,58 +1,27 @@
 import axios from 'axios';
 
 // Acceso a las variables de entorno públicas
-const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY;
-const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID;
+const AIRTABLE_API_KEY = process.env.NEXT_PUBLIC_AIRTABLE_API_KEY;
+const AIRTABLE_BASE_ID = process.env.NEXT_PUBLIC_AIRTABLE_BASE_ID;
 
 // Cliente para interactuar directamente con Airtable API
 const airtable = {
   // Obtener todos los posts publicados con paginación mejorada
   async getPosts({ limit = 20, offset = 0, sortBy = 'publishDate', sortOrder = 'desc', category = '', search = '' }) {
     try {
-      console.log(`Iniciando petición directa a Airtable con parámetros:`, { limit, offset, category, search });
+      console.log(`Iniciando petición a API interna con parámetros:`, { limit, offset, category, search });
       
-      // URL base de Airtable
-      const airtableApiUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/Posts`;
+      // Llamar a nuestra API en lugar de Airtable directamente
+      const params = new URLSearchParams({
+        limit,
+        offset,
+        category,
+        search
+      });
       
-      // Crear objeto para parámetros de la consulta
-      let params = {
-        view: 'Grid view',
-        pageSize: limit,
-      };
+      const response = await axios.get(`/api/posts?${params}`);
       
-      // Aplicar filtros a la consulta
-      let filterByFormula = "{status}='published'";
-      
-      if (category) {
-        filterByFormula = `AND({status}='published', FIND('${category}', {categoriesString}))`;
-      }
-      
-      if (search) {
-        // Búsqueda en título o contenido
-        filterByFormula = `AND({status}='published', OR(FIND('${search}', LOWER({title})), FIND('${search}', LOWER({content}))))`;
-      }
-      
-      params.filterByFormula = filterByFormula;
-      
-      // Configurar ordenamiento
-      const sortField = sortBy === 'publishDate' ? 'publishDate' : sortBy;
-      params.sort = [{ field: sortField, direction: sortOrder === 'desc' ? 'desc' : 'asc' }];
-      
-      // Configuración para la petición
-      const config = {
-        headers: {
-          'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        params: params
-      };
-      
-      console.log(`Llamando a Airtable API directamente`);
-      
-      // Realizar petición a Airtable
-      const response = await axios.get(airtableApiUrl, config);
-      
-      // Procesar respuesta
+      // Procesar los datos como antes...
       const records = response.data.records || [];
       
       // Aplicar paginación manualmente debido a limitaciones de la API de Airtable
@@ -81,19 +50,8 @@ const airtable = {
       
       return formattedPosts;
     } catch (error) {
-      console.error('Error al obtener posts directamente de Airtable:', error);
-      
-      // Intentar usar caché como fallback
-      if (typeof window !== 'undefined') {
-        const cachedAllPosts = sessionStorage.getItem('posts_all_nosearch');
-        if (cachedAllPosts) {
-          console.log('Usando datos de caché como respaldo tras error');
-          const { posts } = JSON.parse(cachedAllPosts);
-          return posts.slice(offset, offset + limit);
-        }
-      }
-      
-      return [];
+      console.error('Error al obtener posts desde API interna:', error);
+      return { posts: [], hasMore: false, total: 0 };
     }
   },
   

@@ -2,10 +2,6 @@
 import { useEffect, useState, Suspense } from 'react';
 import { Container, Typography, Box, Divider, CircularProgress } from '@mui/material';
 import dynamic from 'next/dynamic';
-import Header from '@/components/Header/Header';
-import Sidebar from '@/components/Sidebar/Sidebar';
-import Footer from '@/components/Footer/Footer';
-import MobileSidebarContent from '@/components/Sidebar/MobileSidebarContent';
 import airtable from '@/lib/airtable';
 
 // Importar PostGrid de forma dinámica para evitar problemas de hidratación
