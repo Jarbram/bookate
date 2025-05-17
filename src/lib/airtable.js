@@ -4,11 +4,21 @@ import axios from 'axios';
 const AIRTABLE_API_KEY = process.env.NEXT_PUBLIC_AIRTABLE_API_KEY;
 const AIRTABLE_BASE_ID = process.env.NEXT_PUBLIC_AIRTABLE_BASE_ID;
 
+// Verificar si las variables de entorno están disponibles
+if (!AIRTABLE_API_KEY || !AIRTABLE_BASE_ID) {
+  console.error('Error: Variables de entorno de Airtable no configuradas correctamente');
+}
+
 // Cliente para interactuar directamente con Airtable API
 const airtable = {
   // Obtener todos los posts publicados con paginación mejorada
   async getPosts({ limit = 20, offset = 0, sortBy = 'publishDate', sortOrder = 'desc', category = '', search = '' }) {
     try {
+      // Verificar si las variables de entorno están disponibles
+      if (!AIRTABLE_API_KEY || !AIRTABLE_BASE_ID) {
+        throw new Error('Variables de entorno de Airtable no configuradas');
+      }
+      
       // URL base de Airtable
       const airtableApiUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/Posts`;
       
