@@ -4,29 +4,15 @@ import axios from 'axios';
 const AIRTABLE_API_KEY = process.env.NEXT_PUBLIC_AIRTABLE_API_KEY;
 const AIRTABLE_BASE_ID = process.env.NEXT_PUBLIC_AIRTABLE_BASE_ID;
 
-// Verificar si las variables de entorno están disponibles
-if (!AIRTABLE_API_KEY || !AIRTABLE_BASE_ID) {
-  console.error('Error: Variables de entorno de Airtable no configuradas correctamente');
-}
-
 // Cliente para interactuar directamente con Airtable API
 const airtable = {
   // Obtener todos los posts publicados con paginación mejorada
   async getPosts({ limit = 20, offset = 0, sortBy = 'publishDate', sortOrder = 'desc', category = '', search = '' }) {
     try {
-      // Verificar si las variables de entorno están disponibles
-      if (!AIRTABLE_API_KEY || !AIRTABLE_BASE_ID) {
-        throw new Error('Variables de entorno de Airtable no configuradas');
-      }
+      console.log(`Iniciando petición directa a Airtable con parámetros:`, { limit, offset, category, search });
       
       // URL base de Airtable
       const airtableApiUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/Posts`;
-      
-      // Función para escapar caracteres especiales
-      const escapeAirtableValue = (value) => {
-        if (!value) return '';
-        return value.replace(/'/g, "\\'").replace(/\\/g, "\\\\");
-      };
       
       // Crear objeto para parámetros de la consulta
       let params = {
@@ -34,18 +20,16 @@ const airtable = {
         pageSize: limit,
       };
       
-      // Aplicar filtros a la consulta con escapado adecuado
+      // Aplicar filtros a la consulta
       let filterByFormula = "{status}='published'";
       
       if (category) {
-        const escapedCategory = escapeAirtableValue(category);
-        filterByFormula = `AND({status}='published', FIND('${escapedCategory}', {categoriesString}))`;
+        filterByFormula = `AND({status}='published', FIND('${category}', {categoriesString}))`;
       }
       
       if (search) {
-        const escapedSearch = escapeAirtableValue(search);
         // Búsqueda en título o contenido
-        filterByFormula = `AND({status}='published', OR(FIND('${escapedSearch}', LOWER({title})), FIND('${escapedSearch}', LOWER({content}))))`;
+        filterByFormula = `AND({status}='published', OR(FIND('${search}', LOWER({title})), FIND('${search}', LOWER({content}))))`;
       }
       
       params.filterByFormula = filterByFormula;
@@ -62,6 +46,8 @@ const airtable = {
         },
         params: params
       };
+      
+      console.log(`Llamando a Airtable API directamente`);
       
       // Realizar petición a Airtable
       const response = await axios.get(airtableApiUrl, config);
@@ -91,22 +77,17 @@ const airtable = {
         };
       });
       
+      console.log(`Respuesta recibida con ${formattedPosts.length} posts`);
+      
       return formattedPosts;
     } catch (error) {
       console.error('Error al obtener posts directamente de Airtable:', error);
-      
-      // Información de depuración adicional
-      if (error.response) {
-        console.error('Detalles de error de Airtable:', {
-          status: error.response.status,
-          data: error.response.data
-        });
-      }
       
       // Intentar usar caché como fallback
       if (typeof window !== 'undefined') {
         const cachedAllPosts = sessionStorage.getItem('posts_all_nosearch');
         if (cachedAllPosts) {
+          console.log('Usando datos de caché como respaldo tras error');
           const { posts } = JSON.parse(cachedAllPosts);
           return posts.slice(offset, offset + limit);
         }
@@ -128,34 +109,26 @@ const airtable = {
         try {
           const { count, timestamp } = JSON.parse(cachedCount);
           if (Date.now() - timestamp < 300000) { // 5 minutos
+            console.log(`Usando conteo en caché para ${cacheKey}: ${count}`);
             return { total: count };
           }
         } catch (e) {
-          // Continuar si hay error al leer caché
+          console.warn('Error al leer caché de conteo:', e);
         }
       }
       
       // URL base de Airtable
       const airtableApiUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/Posts`;
       
-      // Función para escapar caracteres especiales en la fórmula
-      const escapeAirtableValue = (value) => {
-        if (!value) return '';
-        // Escapar comillas simples duplicándolas y cualquier otro carácter especial
-        return value.replace(/'/g, "\\'").replace(/\\/g, "\\\\");
-      };
-      
-      // Crear fórmula de filtro con valores escapados
+      // Crear fórmula de filtro
       let filterByFormula = "{status}='published'";
       
       if (category) {
-        const escapedCategory = escapeAirtableValue(category);
-        filterByFormula = `AND({status}='published', FIND('${escapedCategory}', {categoriesString}))`;
+        filterByFormula = `AND({status}='published', FIND('${category}', {categoriesString}))`;
       }
       
       if (tag) {
-        const escapedTag = escapeAirtableValue(tag);
-        filterByFormula = `AND({status}='published', FIND('${escapedTag}', {tagsString}))`;
+        filterByFormula = `AND({status}='published', FIND('${tag}', {tagsString}))`;
       }
       
       // Configuración para la petición
@@ -171,7 +144,7 @@ const airtable = {
         }
       };
       
-      console.log('Filtro aplicado:', filterByFormula); // Para depuración
+      console.log(`Obteniendo conteo directo desde Airtable`);
       
       // Realizar petición a Airtable
       const response = await axios.get(airtableApiUrl, config);
@@ -187,22 +160,13 @@ const airtable = {
             timestamp: Date.now()
           }));
         } catch (e) {
-          // Error al guardar en caché, continuar
+          console.warn('Error al guardar caché de conteo:', e);
         }
       }
       
       return { total };
     } catch (error) {
       console.error('Error al obtener conteo directo de Airtable:', error);
-      
-      // Información de depuración adicional
-      if (error.response) {
-        console.error('Detalles de error de Airtable:', {
-          status: error.response.status,
-          data: error.response.data
-        });
-      }
-      
       const fallbackEstimate = await this.estimatePostCount({ category, tag });
       return { total: fallbackEstimate };
     }
@@ -250,11 +214,14 @@ const airtable = {
         }
       };
       
+      console.log(`Buscando post con slug: ${slug} directamente en Airtable`);
+      
       // Realizar petición a Airtable
       const response = await axios.get(airtableApiUrl, config);
       
       // Verificar si se encontró el post
       if (!response.data.records || response.data.records.length === 0) {
+        console.log(`No se encontró post con slug: ${slug}`);
         return null;
       }
       
