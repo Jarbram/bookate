@@ -115,6 +115,55 @@ const PostCardSkeleton = ({ viewMode = 'grid' }) => {
   );
 };
 
+// Función mejorada para extraer URL de imagen
+const getImageUrl = (featuredImage) => {
+  if (!featuredImage) return 'https://via.placeholder.com/800x600?text=Imagen+no+disponible';
+  
+  // Si es string JSON, intentar parsearlo
+  if (typeof featuredImage === 'string' && (featuredImage.startsWith('{') || featuredImage.startsWith('['))) {
+    try {
+      const parsedImage = JSON.parse(featuredImage);
+      
+      // Si es un objeto con URL directa
+      if (parsedImage && parsedImage.url) {
+        return parsedImage.url;
+      }
+      
+      // Si es un array de attachments (formato Airtable)
+      if (Array.isArray(parsedImage) && parsedImage.length > 0 && parsedImage[0].url) {
+        return parsedImage[0].url;
+      }
+      
+      return 'https://via.placeholder.com/800x600?text=Formato+incorrecto';
+    } catch (e) {
+      // Si falla el parse, tratar como URL directa
+      return featuredImage;
+    }
+  }
+  
+  // Si es array directo (formato Airtable)
+  if (Array.isArray(featuredImage) && featuredImage.length > 0) {
+    if (featuredImage[0] && featuredImage[0].url) {
+      return featuredImage[0].url;
+    }
+    if (typeof featuredImage[0] === 'string') {
+      return featuredImage[0];
+    }
+  }
+  
+  // Si es objeto con URL (ya normalizado)
+  if (typeof featuredImage === 'object' && featuredImage !== null && featuredImage.url) {
+    return featuredImage.url;
+  }
+  
+  // Si es string directo
+  if (typeof featuredImage === 'string') {
+    return featuredImage;
+  }
+  
+  return 'https://via.placeholder.com/800x600?text=Imagen+no+disponible';
+};
+
 export default function PostCard({ post, viewMode = 'grid', onClick, isSelected = false }) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
@@ -174,38 +223,8 @@ export default function PostCard({ post, viewMode = 'grid', onClick, isSelected 
   // Gradiente animado para el hover
   const hoverGradient = `linear-gradient(130deg, ${accentColor}, transparent 70%)`;
   
-  // Determinar la URL de la imagen específicamente para campos attachment de Airtable
-  const imageUrl = useMemo(() => {
-    const defaultImage = 'https://via.placeholder.com/800x600?text=Imagen+no+disponible';
-    
-    // Función específica para extraer URL de campos attachment
-    const extractAttachmentUrl = (attachmentField) => {
-      if (!attachmentField) return null;
-      
-      // Formato típico de campo attachment: array de objetos con propiedades como url, filename, etc.
-      if (Array.isArray(attachmentField) && attachmentField.length > 0) {
-        // Acceso a la URL principal del attachment
-        if (attachmentField[0] && attachmentField[0].url) {
-          return attachmentField[0].url;
-        }
-        
-        // Acceso a thumbnails si están disponibles
-        if (attachmentField[0] && attachmentField[0].thumbnails && attachmentField[0].thumbnails.large) {
-          return attachmentField[0].thumbnails.large.url;
-        }
-      }
-      
-      // Para casos donde ya se ha extraído la URL (cadena directa)
-      if (typeof attachmentField === 'string') {
-        return attachmentField;
-      }
-      
-      return null;
-    };
-    
-    // Usar solo featuredImage como fuente de imagen
-    return extractAttachmentUrl(post.featuredImage) || defaultImage;
-  }, [post]);
+  // Determinar la URL de la imagen usando nuestra función mejorada
+  const imageUrl = useMemo(() => getImageUrl(post.featuredImage), [post.featuredImage]);
   
   // Manejar el clic con animación
   const handleCardClick = () => {

@@ -10,13 +10,34 @@ import airtable from '@/lib/airtable';
 function deserializePostFields(post) {
   if (!post) return null;
   
-  return {
-    ...post,
-    // Restaurar campos serializados
-    featuredImage: typeof post.featuredImage === 'string' && post.featuredImage.startsWith('[{') 
-      ? JSON.parse(post.featuredImage) 
-      : post.featuredImage
-  };
+  try {
+    // Función auxiliar para parsear imágenes
+    const parseImageField = (imageField) => {
+      if (!imageField) return null;
+      
+      // Intentar parsear si es string que parece JSON
+      if (typeof imageField === 'string' && 
+          (imageField.startsWith('{') || imageField.startsWith('['))) {
+        try {
+          return JSON.parse(imageField);
+        } catch (e) {
+          console.warn('Error parseando imagen:', e);
+          return imageField; // Dejar como string si falla
+        }
+      }
+      
+      return imageField; // Devolver sin cambios si no es string JSON
+    };
+    
+    return {
+      ...post,
+      // Restaurar campos serializados
+      featuredImage: parseImageField(post.featuredImage)
+    };
+  } catch (error) {
+    console.error('Error deserializando post:', error);
+    return post; // Devolver original en caso de error
+  }
 }
 
 // Componente cliente que recibe el post del servidor como prop

@@ -1,8 +1,9 @@
 import axios from 'axios';
 
-// Acceso a las variables de entorno públicas
-const AIRTABLE_API_KEY = process.env.NEXT_PUBLIC_AIRTABLE_API_KEY;
-const AIRTABLE_BASE_ID = process.env.NEXT_PUBLIC_AIRTABLE_BASE_ID;
+// Acceso a las variables de entorno solo en servidor
+// Esto evita exponer claves API en el cliente
+const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY; // Ya no usa NEXT_PUBLIC
+const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID; // Ya no usa NEXT_PUBLIC
 
 // Función auxiliar para detectar entorno local
 const isLocalEnvironment = () => {
@@ -10,16 +11,21 @@ const isLocalEnvironment = () => {
     (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 };
 
-// Cliente para interactuar directamente con Airtable API
+// Función auxiliar para detectar entorno servidor vs cliente
+const isServer = () => {
+  return typeof window === 'undefined';
+};
+
+// Cliente para interactuar con Airtable API
 const airtable = {
-  // Obtener todos los posts publicados con paginación mejorada
+  // Obtener todos los posts publicados con paginación
   async getPosts({ limit = 20, offset = 0, sortBy = 'publishDate', sortOrder = 'desc', category = '', search = '' }) {
     try {
       console.log(`Iniciando petición con parámetros:`, { limit, offset, category, search });
       
-      // Detectar si estamos en entorno local
-      if (isLocalEnvironment()) {
-        console.log('Detectado entorno local, conectando directamente con Airtable');
+      // En el servidor, conectamos directamente con Airtable
+      if (isServer()) {
+        console.log('Detectado entorno servidor, conectando directamente con Airtable');
         return await this._getPostsDirectFromAirtable({ 
           limit, 
           offset, 
@@ -30,100 +36,27 @@ const airtable = {
         });
       }
       
-      // En producción, intentar primero con la API interna
+      // En cliente o entorno local, SIEMPRE usar la API interna 
+      // (eliminamos el fallback directo a Airtable desde cliente)
       const params = new URLSearchParams({
         limit,
         offset,
         category,
-        search
+        search,
+        sortBy,
+        sortOrder
       });
       
-      try {
-        const response = await axios.get(`/api/posts?${params}`);
-        
-        // Procesar los datos como antes...
-        const records = response.data.records || [];
-        
-        // Aplicar paginación manualmente debido a limitaciones de la API de Airtable
-        const paginatedRecords = records.slice(offset, offset + limit);
-        
-        // Formatear los registros a formato esperado por la aplicación
-        const formattedPosts = paginatedRecords.map(record => {
-          const fields = record.fields;
-          return {
-            id: record.id,
-            title: fields.title || '',
-            slug: fields.slug || '',
-            content: fields.content || '',
-            excerpt: fields.excerpt || '',
-            featuredImage: fields.featuredImage || null,
-            publishDate: fields.publishDate || '',
-            author: fields.author || '',
-            categories: fields.categories || [],
-            tags: fields.tags || [],
-            status: fields.status || 'draft',
-            views: fields.views || 0
-          };
-        });
-        
-        console.log(`Respuesta recibida con ${formattedPosts.length} posts`);
-        
-        return formattedPosts;
-      } catch (apiError) {
-        console.error('Error en API interna, intentando conectar directamente con Airtable:', apiError);
-        return await this._getPostsDirectFromAirtable({ 
-          limit, 
-          offset, 
-          category, 
-          search,
-          sortBy,
-          sortOrder 
-        });
-      }
-    } catch (error) {
-      console.error('Error al obtener posts:', error);
-      return [];
-    }
-  },
-  
-  // Método de respaldo para obtener posts directamente de Airtable
-  async _getPostsDirectFromAirtable({ limit = 20, offset = 0, category = '', search = '', sortBy = 'publishDate', sortOrder = 'desc' }) {
-    try {
-      console.log('Conectando directamente con Airtable');
+      const response = await axios.get(`/api/posts?${params}`);
       
-      // URL base de Airtable
-      const airtableApiUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/Posts`;
+      // Procesar los datos
+      const records = response.data.records || [];
       
-      // Crear fórmula de filtro
-      let filterByFormula = "{status}='published'";
+      // Aplicar paginación
+      const paginatedRecords = records.slice(offset, offset + limit);
       
-      if (category) {
-        filterByFormula = `AND({status}='published', FIND('${category}', {categoriesString}))`;
-      }
-      
-      if (search) {
-        const searchFilter = `OR(FIND('${search}', LOWER({title})), FIND('${search}', LOWER({content})))`;
-        filterByFormula = `AND(${filterByFormula}, ${searchFilter})`;
-      }
-      
-      // Configuración para la petición
-      const config = {
-        headers: {
-          'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        params: {
-          filterByFormula,
-          view: 'Grid view',
-          sort: [{ field: sortBy, direction: sortOrder }]
-        }
-      };
-      
-      console.log('Realizando petición directa a Airtable...');
-      const response = await axios.get(airtableApiUrl, config);
-      
-      // Formatear los registros
-      const formattedPosts = response.data.records.map(record => {
+      // Formatear los registros a formato esperado por la aplicación
+      const formattedPosts = paginatedRecords.map(record => {
         const fields = record.fields;
         return {
           id: record.id,
@@ -141,14 +74,95 @@ const airtable = {
         };
       });
       
-      // Aplicar paginación manualmente
-      const paginatedPosts = formattedPosts.slice(offset, offset + limit);
+      console.log(`Respuesta recibida con ${formattedPosts.length} posts`);
+      return formattedPosts;
+    } catch (error) {
+      console.error('Error al obtener posts:', error);
+      return [];
+    }
+  },
+  
+  // Método para acceso directo a Airtable (solo usado por el servidor)
+  async _getPostsDirectFromAirtable({ limit = 20, offset = 0, category = '', search = '', sortBy = 'publishDate', sortOrder = 'desc' }) {
+    // Solo ejecutar en servidor para proteger las credenciales
+    if (!isServer()) {
+      console.error('Error: Intento de acceso directo a Airtable desde el cliente');
+      return [];
+    }
+    
+    try {
+      console.log('Conectando directamente con Airtable');
       
-      console.log(`Respuesta directa de Airtable recibida con ${paginatedPosts.length} posts`);
+      // URL base de Airtable
+      const airtableApiUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/Posts`;
       
-      return paginatedPosts;
+      // Crear fórmula de filtro
+      let filterByFormula = "{status}='published'";
+      
+      if (category) {
+        const escapedCategory = category.replace(/'/g, "\\'");
+        filterByFormula = `AND({status}='published', FIND('${escapedCategory}', {categoriesString}))`;
+      }
+      
+      if (search) {
+        const escapedSearch = search.replace(/'/g, "\\'").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+        const searchFilter = `OR(FIND('${escapedSearch}', LOWER({title})), FIND('${escapedSearch}', LOWER({content})))`;
+        filterByFormula = `AND(${filterByFormula}, ${searchFilter})`;
+      }
+      
+      // Configuración para la petición
+      const config = {
+        headers: {
+          'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        params: {
+          filterByFormula,
+          view: 'Grid view',
+          'sort[0][field]': sortBy,
+          'sort[0][direction]': sortOrder,
+          pageSize: limit,
+          offset: offset > 0 ? offset : undefined
+        }
+      };
+      
+      console.log('Realizando petición directa a Airtable...');
+      const response = await axios.get(airtableApiUrl, config);
+      
+      // Formatear los registros
+      const formattedPosts = response.data.records.map(record => {
+        const fields = record.fields;
+        return {
+          id: record.id,
+          title: fields.title || '',
+          slug: fields.slug || '',
+          content: fields.content || '',
+          excerpt: fields.excerpt || '',
+          featuredImage: this._normalizeAirtableImage(fields.featuredImage),
+          publishDate: fields.publishDate || '',
+          author: fields.author || '',
+          categories: fields.categories || [],
+          tags: fields.tags || [],
+          status: fields.status || 'draft',
+          views: fields.views || 0,
+          seoTitle: fields.seoTitle || '',
+          seoDescription: fields.seoDescription || '',
+          seoKeywords: fields.seoKeywords || ''
+        };
+      });
+      
+      console.log(`Obtenidos ${formattedPosts.length} posts directamente de Airtable`);
+      return formattedPosts;
     } catch (error) {
       console.error('Error al obtener posts directamente de Airtable:', error);
+      
+      if (error.response) {
+        console.error('Detalles del error:', {
+          status: error.response.status,
+          data: error.response.data
+        });
+      }
+      
       return [];
     }
   },
@@ -156,11 +170,10 @@ const airtable = {
   // Obtener el conteo total de posts
   async getPostsCount({ category = null, tag = null } = {}) {
     try {
-      // Crear una clave única para el caché
+      // Verificar caché existente (sólo en cliente)
       const cacheKey = `postsCount_${category || 'all'}_${tag || 'all'}`;
-      
-      // Verificar caché existente
       const cachedCount = typeof window !== 'undefined' ? sessionStorage.getItem(cacheKey) : null;
+      
       if (cachedCount) {
         try {
           const { count, timestamp } = JSON.parse(cachedCount);
@@ -173,6 +186,52 @@ const airtable = {
         }
       }
       
+      // En servidor, conectar directo a Airtable
+      if (isServer()) {
+        return await this._getPostsCountDirect({ category, tag });
+      }
+      
+      // En cliente, usar API interna
+      try {
+        const params = new URLSearchParams();
+        if (category) params.append('category', category);
+        if (tag) params.append('tag', tag);
+        
+        const response = await axios.get(`/api/posts/count?${params}`);
+        const total = response.data.total || 0;
+        
+        // Guardar en caché
+        if (typeof window !== 'undefined') {
+          try {
+            sessionStorage.setItem(cacheKey, JSON.stringify({
+              count: total,
+              timestamp: Date.now()
+            }));
+          } catch (e) {
+            console.warn('Error al guardar caché de conteo:', e);
+          }
+        }
+        
+        return { total };
+      } catch (error) {
+        console.error('Error al obtener conteo desde API:', error);
+        const fallbackEstimate = await this.estimatePostCount({ category, tag });
+        return { total: fallbackEstimate };
+      }
+    } catch (error) {
+      console.error('Error al obtener conteo de posts:', error);
+      return { total: 0 };
+    }
+  },
+  
+  // Método directo para contar posts (solo servidor)
+  async _getPostsCountDirect({ category = null, tag = null } = {}) {
+    if (!isServer()) {
+      console.error('Error: Intento de contar posts directamente desde el cliente');
+      return { total: 0 };
+    }
+    
+    try {
       // URL base de Airtable
       const airtableApiUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/Posts`;
       
@@ -201,30 +260,13 @@ const airtable = {
       };
       
       console.log(`Obteniendo conteo directo desde Airtable`);
-      
-      // Realizar petición a Airtable
       const response = await axios.get(airtableApiUrl, config);
-      
-      // Contar registros
       const total = response.data.records.length;
-      
-      // Guardar en caché
-      if (typeof window !== 'undefined') {
-        try {
-          sessionStorage.setItem(cacheKey, JSON.stringify({
-            count: total,
-            timestamp: Date.now()
-          }));
-        } catch (e) {
-          console.warn('Error al guardar caché de conteo:', e);
-        }
-      }
       
       return { total };
     } catch (error) {
       console.error('Error al obtener conteo directo de Airtable:', error);
-      const fallbackEstimate = await this.estimatePostCount({ category, tag });
-      return { total: fallbackEstimate };
+      return { total: 0 };
     }
   },
   
@@ -252,6 +294,35 @@ const airtable = {
   // Obtener un post específico por slug
   async getPostBySlug(slug) {
     try {
+      // En servidor, hacer petición directa
+      if (isServer()) {
+        console.log(`Servidor: buscando post con slug: ${slug} directamente en Airtable`);
+        return await this._getPostBySlugDirect(slug);
+      }
+      
+      // En cliente, usar API interna
+      const response = await axios.get(`/api/post/${slug}`);
+      
+      if (response.data && response.data.post) {
+        return response.data.post;
+      }
+      
+      console.log(`No se encontró post con slug: ${slug} en API interna`);
+      return null;
+    } catch (error) {
+      console.error(`Error al obtener post con slug ${slug}:`, error);
+      return null;
+    }
+  },
+  
+  // Método directo para obtener post por slug (solo servidor)
+  async _getPostBySlugDirect(slug) {
+    if (!isServer()) {
+      console.error('Error: Intento de acceso directo a Airtable desde el cliente');
+      return null;
+    }
+    
+    try {
       // URL base de Airtable
       const airtableApiUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/Posts`;
       
@@ -270,8 +341,6 @@ const airtable = {
         }
       };
       
-      console.log(`Buscando post con slug: ${slug} directamente en Airtable`);
-      
       // Realizar petición a Airtable
       const response = await axios.get(airtableApiUrl, config);
       
@@ -285,19 +354,23 @@ const airtable = {
       const record = response.data.records[0];
       const fields = record.fields;
       
+      // Formatear y normalizar datos
       return {
         id: record.id,
         title: fields.title || '',
         slug: fields.slug || '',
         content: fields.content || '',
         excerpt: fields.excerpt || '',
-        featuredImage: fields.featuredImage || null,
+        featuredImage: this._normalizeAirtableImage(fields.featuredImage),
         publishDate: fields.publishDate || '',
         author: fields.author || '',
         categories: fields.categories || [],
         tags: fields.tags || [],
         status: fields.status || 'draft',
-        views: fields.views || 0
+        views: fields.views || 0,
+        seoTitle: fields.seoTitle || '',
+        seoDescription: fields.seoDescription || '',
+        seoKeywords: fields.seoKeywords || ''
       };
     } catch (error) {
       console.error(`Error al obtener post con slug ${slug} directamente de Airtable:`, error);
@@ -305,88 +378,59 @@ const airtable = {
     }
   },
   
+  // Método para normalizar imágenes de Airtable
+  _normalizeAirtableImage(attachmentField) {
+    if (!attachmentField) return null;
+    
+    // Formato típico de campo attachment: array de objetos
+    if (Array.isArray(attachmentField) && attachmentField.length > 0) {
+      return {
+        url: attachmentField[0].url || '',
+        thumbnails: attachmentField[0].thumbnails || null,
+        filename: attachmentField[0].filename || '',
+        id: attachmentField[0].id || '',
+        size: attachmentField[0].size || 0,
+        type: attachmentField[0].type || ''
+      };
+    }
+    
+    // Para casos donde ya se ha extraído la URL
+    if (typeof attachmentField === 'string') {
+      return { url: attachmentField };
+    }
+    
+    // Si es un objeto JSON serializado
+    if (typeof attachmentField === 'string' && attachmentField.startsWith('{')) {
+      try {
+        return JSON.parse(attachmentField);
+      } catch (e) {
+        return { url: attachmentField };
+      }
+    }
+    
+    return attachmentField;
+  },
+  
   // Obtener todas las categorías
   async getCategories() {
     try {
-      // En entorno local, utilizar posts locales para extraer categorías
-      if (isLocalEnvironment()) {
-        console.log('Obteniendo categorías directamente desde Airtable en entorno local');
+      // En servidor, obtener directamente
+      if (isServer()) {
         // Obtener todos los posts para extraer categorías
         const posts = await this._getPostsDirectFromAirtable({ limit: 100 });
-        
-        // Extraer categorías únicas de los posts
-        const categoryMap = {};
-        
-        posts.forEach(post => {
-          if (post.categories) {
-            const categories = Array.isArray(post.categories) 
-              ? post.categories 
-              : post.categories.split(',').map(c => c.trim());
-            
-            categories.forEach(cat => {
-              if (cat) {
-                const formattedName = cat.charAt(0).toUpperCase() + cat.slice(1);
-                categoryMap[formattedName] = (categoryMap[formattedName] || 0) + 1;
-              }
-            });
-          }
-        });
-        
-        // Convertir a array para la respuesta
-        const categories = Object.entries(categoryMap).map(([name, count]) => ({ 
-          name, 
-          count,
-          slug: name.toLowerCase()
-        }));
-        
-        // Ordenar por cantidad de posts
-        categories.sort((a, b) => b.count - a.count);
-        
-        return categories;
+        return this._extractCategoriesFromPosts(posts);
       }
       
-      // En producción, intentar primero con la API
+      // En cliente, usar API interna
       try {
         const response = await axios.get('/api/categories');
         if (response.data && response.data.categories) {
           return response.data.categories;
         }
         throw new Error('Formato de respuesta inesperado');
-      } catch (apiError) {
-        console.error('Error en API de categorías, extrayendo de posts:', apiError);
-        
-        // Obtener todos los posts para extraer categorías
-        const posts = await this.getPosts({ limit: 100 });
-        
-        // Extraer categorías únicas de los posts
-        const categoryMap = {};
-        
-        posts.forEach(post => {
-          if (post.categories) {
-            const categories = Array.isArray(post.categories) 
-              ? post.categories 
-              : post.categories.split(',').map(c => c.trim());
-            
-            categories.forEach(cat => {
-              if (cat) {
-                const formattedName = cat.charAt(0).toUpperCase() + cat.slice(1);
-                categoryMap[formattedName] = (categoryMap[formattedName] || 0) + 1;
-              }
-            });
-          }
-        });
-        
-        // Convertir a array para la respuesta
-        const categories = Object.entries(categoryMap).map(([name, count]) => ({ 
-          name, 
-          count,
-          slug: name.toLowerCase()
-        }));
-        
-        // Ordenar por cantidad de posts
-        categories.sort((a, b) => b.count - a.count);
-        
-        return categories;
+      } catch (error) {
+        console.error('Error en API de categorías:', error);
+        return [];
       }
     } catch (error) {
       console.error('Error al obtener categorías:', error);
@@ -394,89 +438,92 @@ const airtable = {
     }
   },
   
+  // Método auxiliar para extraer categorías de posts
+  _extractCategoriesFromPosts(posts) {
+    // Extraer categorías únicas de los posts
+    const categoryMap = {};
+    
+    posts.forEach(post => {
+      if (post.categories) {
+        const categories = Array.isArray(post.categories) 
+          ? post.categories 
+          : post.categories.split(',').map(c => c.trim());
+        
+        categories.forEach(cat => {
+          if (cat) {
+            const formattedName = cat.charAt(0).toUpperCase() + cat.slice(1);
+            categoryMap[formattedName] = (categoryMap[formattedName] || 0) + 1;
+          }
+        });
+      }
+    });
+    
+    // Convertir a array para la respuesta
+    const categories = Object.entries(categoryMap).map(([name, count]) => ({ 
+      name, 
+      count,
+      slug: name.toLowerCase()
+    }));
+    
+    // Ordenar por cantidad de posts
+    categories.sort((a, b) => b.count - a.count);
+    
+    return categories;
+  },
+  
   // Obtener todos los tags
   async getTags() {
     try {
-      // En entorno local, obtener directamente de Airtable
-      if (isLocalEnvironment()) {
-        console.log('Obteniendo tags directamente de Airtable en entorno local');
-        
-        // Obtener todos los posts para extraer tags
+      // En servidor, obtener directamente
+      if (isServer()) {
         const posts = await this._getPostsDirectFromAirtable({ limit: 100 });
-        
-        // Extraer tags únicos de los posts
-        const tagMap = {};
-        
-        posts.forEach(post => {
-          if (post.tags) {
-            const tags = Array.isArray(post.tags) 
-              ? post.tags 
-              : post.tags.split(',').map(t => t.trim());
-            
-            tags.forEach(tag => {
-              if (tag) {
-                tagMap[tag] = (tagMap[tag] || 0) + 1;
-              }
-            });
-          }
-        });
-        
-        // Convertir a array para la respuesta
-        const tags = Object.entries(tagMap).map(([name, count]) => ({ 
-          name, 
-          count,
-          slug: name.toLowerCase()
-        }));
-        
-        // Ordenar por cantidad de posts
-        tags.sort((a, b) => b.count - a.count);
-        
-        return tags;
+        return this._extractTagsFromPosts(posts);
       }
       
-      // En producción, intentar con la API
+      // En cliente, usar API interna
       try {
         const response = await axios.get('/api/tags');
         return response.data.tags;
-      } catch (apiError) {
-        console.error('Error en API de tags, extrayendo de posts:', apiError);
-        
-        // Obtener todos los posts para extraer tags
-        const posts = await this.getPosts({ limit: 100 });
-        
-        // Extraer tags únicos de los posts
-        const tagMap = {};
-        
-        posts.forEach(post => {
-          if (post.tags) {
-            const tags = Array.isArray(post.tags) 
-              ? post.tags 
-              : post.tags.split(',').map(t => t.trim());
-            
-            tags.forEach(tag => {
-              if (tag) {
-                tagMap[tag] = (tagMap[tag] || 0) + 1;
-              }
-            });
-          }
-        });
-        
-        // Convertir a array para la respuesta
-        const tags = Object.entries(tagMap).map(([name, count]) => ({ 
-          name, 
-          count,
-          slug: name.toLowerCase()
-        }));
-        
-        // Ordenar por cantidad de posts
-        tags.sort((a, b) => b.count - a.count);
-        
-        return tags;
+      } catch (error) {
+        console.error('Error en API de tags:', error);
+        return [];
       }
     } catch (error) {
       console.error('Error al obtener tags:', error);
       return [];
     }
+  },
+  
+  // Método auxiliar para extraer tags de posts
+  _extractTagsFromPosts(posts) {
+    // Extraer tags únicos de los posts
+    const tagMap = {};
+    
+    posts.forEach(post => {
+      if (post.tags) {
+        const tags = Array.isArray(post.tags) 
+          ? post.tags 
+          : post.tags.split(',').map(t => t.trim());
+        
+        tags.forEach(tag => {
+          if (tag) {
+            tagMap[tag] = (tagMap[tag] || 0) + 1;
+          }
+        });
+      }
+    });
+    
+    // Convertir a array para la respuesta
+    const tags = Object.entries(tagMap).map(([name, count]) => ({ 
+      name, 
+      count,
+      slug: name.toLowerCase()
+    }));
+    
+    // Ordenar por cantidad de posts
+    tags.sort((a, b) => b.count - a.count);
+    
+    return tags;
   },
   
   // Método para carga progresiva de posts

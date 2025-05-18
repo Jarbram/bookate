@@ -187,36 +187,77 @@ export default function PostDetail({ post }) {
   const tagsArray = getTagsArray(post.tags);
   const adPositions = getAdPositions(post.adPositions);
   
-  // Extraer URL de imagen de forma segura (similar a PostCard)
+  // Extraer URL de imagen de forma segura y robusta
   const imageUrl = useMemo(() => {
     const defaultImage = 'https://via.placeholder.com/1200x800?text=Imagen+no+disponible';
     
-    // Función para extraer URL de campos attachment de Airtable
-    const extractAttachmentUrl = (attachmentField) => {
-      if (!attachmentField) return null;
+    try {
+      // Si no hay imagen, usar default
+      if (!post.featuredImage) return defaultImage;
       
-      // Para campos attachment en formato array de objetos
-      if (Array.isArray(attachmentField) && attachmentField.length > 0) {
-        // Acceso a la URL principal
-        if (attachmentField[0] && attachmentField[0].url) {
-          return attachmentField[0].url;
+      // Si featuredImage es un string JSON, intentar parsearlo
+      if (typeof post.featuredImage === 'string' && 
+          (post.featuredImage.startsWith('{') || post.featuredImage.startsWith('['))) {
+        try {
+          const parsedImage = JSON.parse(post.featuredImage);
+          
+          // Si es un objeto con URL directa
+          if (parsedImage && parsedImage.url) {
+            return parsedImage.url;
+          }
+          
+          // Si es un array de attachments (formato Airtable)
+          if (Array.isArray(parsedImage) && parsedImage.length > 0 && parsedImage[0].url) {
+            return parsedImage[0].url;
+          }
+          
+          // Si tiene thumbnails
+          if (parsedImage[0] && parsedImage[0].thumbnails && parsedImage[0].thumbnails.large) {
+            return parsedImage[0].thumbnails.large.url;
+          }
+          
+          return defaultImage;
+        } catch (e) {
+          console.warn('Error al parsear featuredImage:', e);
+          // Tratar como URL directa si falla el parse
+          return post.featuredImage;
+        }
+      }
+      
+      // Si featuredImage es un objeto directo
+      if (typeof post.featuredImage === 'object' && post.featuredImage !== null) {
+        // Si es un objeto con URL directa
+        if (post.featuredImage.url) {
+          return post.featuredImage.url;
         }
         
-        // Acceso a thumbnails si están disponibles
-        if (attachmentField[0] && attachmentField[0].thumbnails && attachmentField[0].thumbnails.large) {
-          return attachmentField[0].thumbnails.large.url;
+        // Si es un array de attachments
+        if (Array.isArray(post.featuredImage) && post.featuredImage.length > 0) {
+          if (post.featuredImage[0] && post.featuredImage[0].url) {
+            return post.featuredImage[0].url;
+          }
+          
+          // Si tiene thumbnails
+          if (post.featuredImage[0] && post.featuredImage[0].thumbnails && post.featuredImage[0].thumbnails.large) {
+            return post.featuredImage[0].thumbnails.large.url;
+          }
         }
       }
       
-      // Para casos donde ya se ha extraído la URL (cadena directa no vacía)
-      if (typeof attachmentField === 'string' && attachmentField.trim() !== '') {
-        return attachmentField;
+      // Si es un string directo que parece URL
+      if (typeof post.featuredImage === 'string' && post.featuredImage.trim() !== '') {
+        // Verificar si el string parece una URL válida
+        if (post.featuredImage.match(/^https?:\/\//i)) {
+          return post.featuredImage;
+        }
       }
       
-      return null;
-    };
-    
-    return extractAttachmentUrl(post.featuredImage) || defaultImage;
+      // Si no se pudo extraer una URL válida, usar default
+      return defaultImage;
+    } catch (error) {
+      console.error('Error al procesar URL de imagen:', error);
+      return defaultImage;
+    }
   }, [post.featuredImage]);
   
   // Fecha formateada
