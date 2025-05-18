@@ -2,14 +2,13 @@ import { notFound } from 'next/navigation';
 import airtable from '@/lib/airtable';
 import PostPageClient from '@/components/Posts/PostPageClient';
 
+// Definir la generación estática/dinámica
+export const dynamic = 'force-dynamic';
+
 // Generación de metadatos para SEO
 export async function generateMetadata(props) {
-  // Acceso seguro a slug con manejo explícito de promesas
-  const slug = props?.params?.slug 
-    ? (typeof props.params.slug.then === 'function' 
-        ? await props.params.slug 
-        : props.params.slug)
-    : null;
+  // Extraer el slug de forma segura
+  const slug = String(props.params?.slug || '');
   
   if (!slug) {
     return {
@@ -18,78 +17,80 @@ export async function generateMetadata(props) {
     };
   }
   
-  const post = await airtable.getPostBySlug(slug);
-  
-  if (!post) {
+  try {
+    const post = await airtable.getPostBySlug(slug);
+    
+    if (!post) {
+      return {
+        title: 'Artículo no encontrado',
+        description: 'El artículo que buscas no existe o ha sido eliminado.'
+      };
+    }
+    
+    // Extraer URL de imagen para metadatos
+    const imageUrl = getImageUrlForMeta(post.featuredImage);
+    
     return {
-      title: 'Artículo no encontrado',
-      description: 'El artículo que buscas no existe o ha sido eliminado.'
-    };
-  }
-  
-  // Extraer URL de imagen de forma segura para los metadatos
-  const getImageUrlForMeta = (featuredImage) => {
-    if (!featuredImage) return null;
-    
-    // Para campos attachment en formato array
-    if (Array.isArray(featuredImage) && featuredImage.length > 0) {
-      if (featuredImage[0] && featuredImage[0].url) {
-        return featuredImage[0].url;
-      }
-    }
-    
-    // Para string directo
-    if (typeof featuredImage === 'string' && featuredImage.trim() !== '') {
-      return featuredImage;
-    }
-    
-    return null;
-  };
-  
-  const imageUrl = getImageUrlForMeta(post.featuredImage);
-  
-  return {
-    title: post.seoTitle || post.title,
-    description: post.seoDescription || post.excerpt,
-    keywords: post.seoKeywords || '',
-    openGraph: {
       title: post.seoTitle || post.title,
       description: post.seoDescription || post.excerpt,
-      images: imageUrl ? [{ url: imageUrl }] : [],
-    },
-  };
+      keywords: post.seoKeywords || '',
+      openGraph: {
+        title: post.seoTitle || post.title,
+        description: post.seoDescription || post.excerpt,
+        images: imageUrl ? [{ url: imageUrl }] : [],
+      },
+    };
+  } catch (error) {
+    console.error('Error generando metadatos:', error);
+    return {
+      title: 'Error al cargar artículo',
+      description: 'Ha ocurrido un error al intentar cargar el contenido.'
+    };
+  }
 }
 
-// Función del lado del servidor para obtener el post
+// Función auxiliar para extraer URL de imagen
+function getImageUrlForMeta(featuredImage) {
+  if (!featuredImage) return null;
+  
+  // Para campos attachment en formato array
+  if (Array.isArray(featuredImage) && featuredImage.length > 0) {
+    if (featuredImage[0] && featuredImage[0].url) {
+      return featuredImage[0].url;
+    }
+  }
+  
+  // Para string directo
+  if (typeof featuredImage === 'string' && featuredImage.trim() !== '') {
+    return featuredImage;
+  }
+  
+  return null;
+}
+
+// Función principal de la página
 export default async function PostPage(props) {
   try {
-    // Acceso seguro a slug con manejo explícito de promesas
-    const slug = props?.params?.slug 
-      ? (typeof props.params.slug.then === 'function' 
-          ? await props.params.slug 
-          : props.params.slug)
-      : null;
+    // Extraer el slug de forma segura sin awaits
+    const slug = String(props.params?.slug || '');
     
     if (!slug) {
       notFound();
     }
     
-    // Intentamos pre-cargar el post en el servidor para SEO y rendimiento
+    // Cargar el post
     const initialPost = await airtable.getPostBySlug(slug);
     
     if (!initialPost) {
-      // Si no se encuentra el post, mostramos la página 404
       notFound();
     }
     
-    // Asegurarnos de que el post es serializable correctamente
+    // Preparar datos para serialización
     const safePost = {
       ...initialPost,
-      // Asegurar que los campos complejos sean manejados correctamente
       featuredImage: typeof initialPost.featuredImage === 'object' 
         ? JSON.stringify(initialPost.featuredImage) 
         : initialPost.featuredImage,
-      // Otros campos que podrían necesitar tratamiento especial
       categories: Array.isArray(initialPost.categories) 
         ? initialPost.categories 
         : [],
@@ -98,19 +99,15 @@ export default async function PostPage(props) {
         : []
     };
     
-    // Pasamos el post al componente cliente como prop inicial
+    // Renderizar el componente cliente
     return <PostPageClient initialPost={safePost} slug={slug} />;
   } catch (error) {
-    console.error('Error cargando post en servidor:', error);
+    console.error('Error cargando post:', error);
     
-    // En caso de error, intentamos acceder al slug de manera segura
-    const fallbackSlug = props?.params?.slug 
-      ? (typeof props.params.slug.then === 'function' 
-          ? await props.params.slug 
-          : props.params.slug)
-      : null;
+    // Extraer slug de forma segura para el fallback
+    const fallbackSlug = String(props.params?.slug || '');
     
-    // En caso de error, renderizamos el componente cliente sin datos iniciales
+    // Mostrar componente cliente sin datos iniciales
     return <PostPageClient slug={fallbackSlug} />;
   }
 } 
