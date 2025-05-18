@@ -28,6 +28,18 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import RelatedPosts from './RelatedPosts';
 import AdPlaceholder from '../Ads/AdPlaceholder';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
+import FacebookIcon from '@mui/icons-material/Facebook';
+import TwitterIcon from '@mui/icons-material/Twitter';
+import LinkedInIcon from '@mui/icons-material/LinkedIn';
+import WhatsAppIcon from '@mui/icons-material/WhatsApp';
+import LinkIcon from '@mui/icons-material/Link';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
 
 // Función para formatear categorías (reutilizada de PostCard)
 const getCategoriesArray = (categories) => {
@@ -176,6 +188,9 @@ export default function PostDetail({ post }) {
   const [content, setContent] = useState('');
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
   
   // Colores del tema
   const accentColor = '#6200ea';
@@ -311,8 +326,8 @@ export default function PostDetail({ post }) {
     }
   }, [post.content, adPositions]);
   
-  // Iniciar compartir
-  const handleShare = () => {
+  // Manejadores para el menú compartir
+  const handleShareClick = (event) => {
     if (navigator.share) {
       navigator.share({
         title: post.title,
@@ -321,8 +336,56 @@ export default function PostDetail({ post }) {
       })
       .catch((error) => console.log('Error compartiendo:', error));
     } else {
-      setShowShareMenu(!showShareMenu);
+      setAnchorEl(event.currentTarget);
     }
+  };
+
+  const handleCloseMenu = () => {
+    setAnchorEl(null);
+  };
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(window.location.href)
+      .then(() => {
+        setSnackbarMessage('Enlace copiado al portapapeles');
+        setSnackbarOpen(true);
+        handleCloseMenu();
+      })
+      .catch(err => {
+        console.error('Error al copiar: ', err);
+      });
+  };
+
+  const shareOnSocial = (network) => {
+    const url = encodeURIComponent(window.location.href);
+    const title = encodeURIComponent(post.title);
+    const text = encodeURIComponent(post.excerpt || '');
+    
+    let shareUrl;
+    
+    switch(network) {
+      case 'facebook':
+        shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}`;
+        break;
+      case 'twitter':
+        shareUrl = `https://twitter.com/intent/tweet?url=${url}&text=${title}`;
+        break;
+      case 'linkedin':
+        shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${url}`;
+        break;
+      case 'whatsapp':
+        shareUrl = `https://wa.me/?text=${title}%20${url}`;
+        break;
+      default:
+        return;
+    }
+    
+    window.open(shareUrl, '_blank', 'width=600,height=400');
+    handleCloseMenu();
+  };
+
+  const handleSnackbarClose = () => {
+    setSnackbarOpen(false);
   };
   
   return (
@@ -421,20 +484,11 @@ export default function PostDetail({ post }) {
                   mb: 4
                 }}
               >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <CalendarTodayIcon sx={{ fontSize: '0.9rem', color: alpha(textColor, 0.6), mr: 1 }} />
-                    <Typography variant="body2" sx={{ color: alpha(textColor, 0.7) }}>
-                      {formattedDate}
-                    </Typography>
-                  </Box>
-                  
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <VisibilityIcon sx={{ fontSize: '0.9rem', color: alpha(textColor, 0.6), mr: 1 }} />
-                    <Typography variant="body2" sx={{ color: alpha(textColor, 0.7) }}>
-                      {post.views ? post.views.toLocaleString() : 0} lecturas
-                    </Typography>
-                  </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <CalendarTodayIcon sx={{ fontSize: '0.9rem', color: alpha(textColor, 0.6), mr: 1 }} />
+                  <Typography variant="body2" sx={{ color: alpha(textColor, 0.7) }}>
+                    {formattedDate}
+                  </Typography>
                 </Box>
                 
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -449,7 +503,7 @@ export default function PostDetail({ post }) {
                   <IconButton 
                     aria-label="Compartir"
                     size="small"
-                    onClick={handleShare}
+                    onClick={handleShareClick}
                     sx={{ color: alpha(textColor, 0.6) }}
                   >
                     <ShareIcon fontSize="small" />
@@ -697,12 +751,80 @@ export default function PostDetail({ post }) {
                   currentPostId={post.id} 
                   categories={categoriesArray}
                   tags={tagsArray}
+                  limit={3}
                 />
               </Box>
             </motion.div>
           </motion.div>
         </Box>
       </Fade>
+      
+      {/* Agregar menú de compartir */}
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleCloseMenu}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+        PaperProps={{
+          elevation: 3,
+          sx: {
+            borderRadius: '12px',
+            mt: 1,
+            minWidth: 200,
+          }
+        }}
+      >
+        <MenuItem onClick={() => shareOnSocial('facebook')}>
+          <ListItemIcon>
+            <FacebookIcon fontSize="small" sx={{ color: '#1877F2' }} />
+          </ListItemIcon>
+          <ListItemText>Facebook</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => shareOnSocial('twitter')}>
+          <ListItemIcon>
+            <TwitterIcon fontSize="small" sx={{ color: '#1DA1F2' }} />
+          </ListItemIcon>
+          <ListItemText>Twitter</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => shareOnSocial('linkedin')}>
+          <ListItemIcon>
+            <LinkedInIcon fontSize="small" sx={{ color: '#0A66C2' }} />
+          </ListItemIcon>
+          <ListItemText>LinkedIn</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => shareOnSocial('whatsapp')}>
+          <ListItemIcon>
+            <WhatsAppIcon fontSize="small" sx={{ color: '#25D366' }} />
+          </ListItemIcon>
+          <ListItemText>WhatsApp</ListItemText>
+        </MenuItem>
+        <Divider />
+        <MenuItem onClick={copyToClipboard}>
+          <ListItemIcon>
+            <ContentCopyIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Copiar enlace</ListItemText>
+        </MenuItem>
+      </Menu>
+      
+      {/* Snackbar para notificar copiado */}
+      <Snackbar 
+        open={snackbarOpen} 
+        autoHideDuration={3000} 
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={handleSnackbarClose} severity="success" variant="filled">
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 } 
