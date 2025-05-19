@@ -14,19 +14,24 @@ import {
   Collapse,
   InputAdornment,
   Tooltip,
-  Zoom
+  Zoom,
+  CircularProgress
 } from '@mui/material';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import SendIcon from '@mui/icons-material/Send';
 import CloseIcon from '@mui/icons-material/Close';
 import { motion } from 'framer-motion';
+import Link from 'next/link';
 
 export default function Header({ darkMode = false }) {
   const [elevated, setElevated] = useState(false);
   const [showMobileInput, setShowMobileInput] = useState(false);
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
+  const [subscribing, setSubscribing] = useState(false);
+  const [subscribeError, setSubscribeError] = useState('');
+  const [subscribeMessage, setSubscribeMessage] = useState('');
   
   // Colores primarios del tema (para coincidir con el Footer)
   const primaryLight = '#6200ea';
@@ -50,16 +55,52 @@ export default function Header({ darkMode = false }) {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [showMobileInput]);
   
-  const handleSubscribe = () => {
-    if (email && email.includes('@')) {
-      setSubscribed(true);
-      setEmail('');
+  const handleSubscribe = async () => {
+    // Validar email
+    if (!email || !email.includes('@')) {
+      setSubscribeError('Por favor, introduce un email válido');
+      setTimeout(() => setSubscribeError(''), 3000);
+      return;
+    }
+    
+    try {
+      // Iniciar proceso de suscripción
+      setSubscribing(true);
+      setSubscribeError('');
       
-      // Resetear después de mostrar el mensaje
-      setTimeout(() => {
-        setSubscribed(false);
-        setShowMobileInput(false);
-      }, 2500);
+      // Enviar petición a la API
+      const response = await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Suscripción exitosa
+        setSubscribed(true);
+        setSubscribeMessage(data.message);
+        setEmail('');
+        
+        // Resetear después de mostrar el mensaje
+        setTimeout(() => {
+          setSubscribed(false);
+          setShowMobileInput(false);
+          setSubscribeMessage('');
+        }, 3000);
+      } else {
+        // Error en la suscripción
+        setSubscribeError(data.message || 'Error al procesar tu suscripción');
+        setTimeout(() => setSubscribeError(''), 3000);
+      }
+    } catch (error) {
+      setSubscribeError('Error al conectar con el servidor');
+      setTimeout(() => setSubscribeError(''), 3000);
+    } finally {
+      setSubscribing(false);
     }
   };
 
@@ -106,39 +147,42 @@ export default function Header({ darkMode = false }) {
               }}
             />
             
-            {/* Logo con icono */}
-            <Box 
-              component={motion.div}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5 }}
-              sx={{ 
-                display: 'flex', 
-                alignItems: 'center',
-                zIndex: 1
-              }}
-            >
-              <MenuBookIcon 
+            {/* Logo con icono y link al home */}
+            <Link href="/" style={{ textDecoration: 'none' }}>
+              <Box 
+                component={motion.div}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5 }}
                 sx={{ 
-                  mr: 1.5, 
-                  fontSize: '1.8rem', 
-                  color: accentColor,
-                  transform: 'rotate(-5deg)'
-                }} 
-              />
-              <Typography
-                variant="h5"
-                component="div"
-                sx={{ 
-                  fontWeight: 800,
-                  color: textColor,
-                  fontSize: { xs: '1.3rem', md: '1.5rem' },
-                  letterSpacing: '-0.02em'
+                  display: 'flex', 
+                  alignItems: 'center',
+                  zIndex: 1,
+                  cursor: 'pointer'
                 }}
               >
-                Bookate
-              </Typography>
-            </Box>
+                <MenuBookIcon 
+                  sx={{ 
+                    mr: 1.5, 
+                    fontSize: '1.8rem', 
+                    color: accentColor,
+                    transform: 'rotate(-5deg)'
+                  }} 
+                />
+                <Typography
+                  variant="h5"
+                  component="div"
+                  sx={{ 
+                    fontWeight: 800,
+                    color: textColor,
+                    fontSize: { xs: '1.3rem', md: '1.5rem' },
+                    letterSpacing: '-0.02em'
+                  }}
+                >
+                  Bookate
+                </Typography>
+              </Box>
+            </Link>
             
             {/* Versión Desktop: Campo de email + botón */}
             <Box 
@@ -166,7 +210,7 @@ export default function Header({ darkMode = false }) {
                       px: 2
                     }}
                   >
-                    ¡Gracias por suscribirte!
+                    {subscribeMessage || '¡Gracias por suscribirte!'}
                   </Typography>
                 </motion.div>
               ) : (
@@ -176,6 +220,9 @@ export default function Header({ darkMode = false }) {
                     size="small"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    error={!!subscribeError}
+                    helperText={subscribeError}
+                    disabled={subscribing}
                     InputProps={{
                       sx: {
                         borderRadius: '8px',
@@ -199,6 +246,7 @@ export default function Header({ darkMode = false }) {
                   <Button
                     variant="contained"
                     onClick={handleSubscribe}
+                    disabled={subscribing}
                     sx={{ 
                       bgcolor: accentColor,
                       color: 'white',
@@ -220,7 +268,7 @@ export default function Header({ darkMode = false }) {
                       }
                     }}
                   >
-                    Suscribirme
+                    {subscribing ? 'Enviando...' : 'Suscribirme'}
                   </Button>
                 </>
               )}
@@ -248,7 +296,7 @@ export default function Header({ darkMode = false }) {
                       fontSize: '0.85rem'
                     }}
                   >
-                    ¡Gracias!
+                    {subscribeMessage || '¡Gracias!'}
                   </Typography>
                 </motion.div>
               ) : (
@@ -305,6 +353,16 @@ export default function Header({ darkMode = false }) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2 }}
           >
+            {subscribeError && (
+              <Typography 
+                variant="caption" 
+                color="error" 
+                sx={{ mb: 1, width: '100%', textAlign: 'center' }}
+              >
+                {subscribeError}
+              </Typography>
+            )}
+            
             <TextField
               fullWidth
               placeholder="Escribe tu email para suscribirte"
@@ -312,17 +370,24 @@ export default function Header({ darkMode = false }) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               autoFocus
+              disabled={subscribing}
+              error={!!subscribeError}
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
                     <IconButton 
                       edge="end"
                       onClick={handleSubscribe}
+                      disabled={subscribing}
                       sx={{ 
                         color: accentColor
                       }}
                     >
-                      <SendIcon />
+                      {subscribing ? (
+                        <CircularProgress size={20} color="inherit" />
+                      ) : (
+                        <SendIcon />
+                      )}
                     </IconButton>
                   </InputAdornment>
                 ),

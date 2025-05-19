@@ -128,63 +128,166 @@ export default function RelatedPosts({ currentPostId, categories = [], tags = []
   }
   
   return (
-    <Grid container spacing={3}>
-      {loading ? (
-        Array.from(new Array(limit)).map((_, index) => (
-          <Grid item xs={12} sm={6} md={4} key={`skeleton-${index}`}>
-            <Box sx={{ 
-              height: '320px', 
-              borderRadius: '16px',
-              border: '1px solid rgba(0,0,0,0.08)',
-              overflow: 'hidden',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
-            }}>
+    <Box sx={{
+      position: 'relative',
+      width: '100%',
+      overflow: 'hidden',
+      p: 1,
+      '&::before, &::after': {
+        content: '""',
+        position: 'absolute',
+        width: '60px',
+        height: '100%',
+        top: 0,
+        zIndex: 2,
+        pointerEvents: 'none',
+      },
+      '&::before': {
+        left: 0,
+        background: 'linear-gradient(to right, rgba(255,255,255,0.9), rgba(255,255,255,0))',
+      },
+      '&::after': {
+        right: 0,
+        background: 'linear-gradient(to left, rgba(255,255,255,0.9), rgba(255,255,255,0))',
+      }
+    }}>
+      <Box
+        sx={{
+          display: 'flex',
+          overflowX: 'auto',
+          pb: 2,
+          px: 1,
+          scrollBehavior: 'smooth',
+          '&::-webkit-scrollbar': {
+            height: '8px',
+          },
+          '&::-webkit-scrollbar-track': {
+            backgroundColor: theme => alpha(theme.palette.primary.main, 0.05),
+            borderRadius: '10px',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            backgroundColor: theme => alpha(theme.palette.primary.main, 0.2),
+            borderRadius: '10px',
+            '&:hover': {
+              backgroundColor: theme => alpha(theme.palette.primary.main, 0.3),
+            }
+          },
+          gap: 3
+        }}
+      >
+        {loading ? (
+          Array.from(new Array(limit)).map((_, index) => (
+            <Box 
+              key={`skeleton-${index}`}
+              sx={{ 
+                flexShrink: 0,
+                width: { xs: '85%', sm: '330px' },
+                height: '380px', 
+                borderRadius: '20px',
+                border: '1px solid rgba(0,0,0,0.08)',
+                overflow: 'hidden',
+                boxShadow: '0 6px 20px rgba(0,0,0,0.05)',
+                background: 'white',
+                position: 'relative',
+                transition: 'all 0.3s ease',
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: '6px',
+                  background: theme => `linear-gradient(90deg, ${alpha(theme.palette.primary.main, 0.6)}, ${alpha(theme.palette.secondary.main || theme.palette.primary.light, 0.6)})`,
+                  borderRadius: '20px 20px 0 0',
+                }
+              }}
+            >
               <Skeleton 
                 variant="rectangular" 
                 width="100%" 
-                height="160px" 
-                sx={{ borderRadius: '16px 16px 0 0' }} 
+                height="180px" 
               />
-              <Box sx={{ p: 2 }}>
-                <Skeleton width="80%" height={32} sx={{ mb: 1 }} />
-                <Skeleton width="100%" height={20} sx={{ mb: 0.5 }} />
-                <Skeleton width="60%" height={20} sx={{ mb: 1 }} />
-                <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
-                  <Skeleton width={60} height={24} sx={{ borderRadius: '16px' }} />
-                  <Skeleton width={70} height={24} sx={{ borderRadius: '16px' }} />
+              <Box sx={{ p: 3 }}>
+                <Skeleton width="80%" height={32} sx={{ mb: 1.5 }} />
+                <Skeleton width="100%" height={20} sx={{ mb: 0.8 }} />
+                <Skeleton width="90%" height={20} sx={{ mb: 0.8 }} />
+                <Skeleton width="60%" height={20} sx={{ mb: 1.5 }} />
+                <Box sx={{ mt: 2, display: 'flex', gap: 1.5 }}>
+                  <Skeleton width={70} height={26} sx={{ borderRadius: '20px' }} />
+                  <Skeleton width={90} height={26} sx={{ borderRadius: '20px' }} />
                 </Box>
               </Box>
             </Box>
-          </Grid>
-        ))
-      ) : (
-        relatedPosts.map(post => (
-          <Grid item xs={12} sm={6} md={4} key={post.id}>
-            <Card 
-              sx={{ 
-                height: '100%', 
-                borderRadius: '16px',
-                cursor: 'pointer',
-                transition: 'transform 0.2s, box-shadow 0.2s',
-                '&:hover': {
-                  transform: 'translateY(-4px)',
-                  boxShadow: '0 8px 16px rgba(0,0,0,0.1)'
-                }
+          ))
+        ) : (
+          relatedPosts.map(post => (
+            <Box 
+              key={post.id}
+              sx={{
+                flexShrink: 0,
+                width: { xs: '85%', sm: '330px' },
+                height: '380px',
               }}
-              onClick={() => handlePostClick(post.id, post.slug)}
             >
-              <PostCard 
-                post={post} 
-                isActionable={false} 
-                customStyles={{ 
-                  borderRadius: '16px',
-                  height: '100%'
+              <Card 
+                sx={{ 
+                  height: '100%', 
+                  borderRadius: '20px',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  boxShadow: '0 8px 20px rgba(0,0,0,0.07)',
+                  '&:hover': {
+                    transform: 'translateY(-8px)',
+                    boxShadow: '0 16px 25px rgba(0,0,0,0.12)',
+                    '& .post-gradient': {
+                      opacity: 0.8,
+                    }
+                  },
+                  '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: '6px',
+                    background: theme => `linear-gradient(90deg, ${alpha(theme.palette.primary.main, 0.6)}, ${alpha(theme.palette.secondary.main || theme.palette.primary.light, 0.6)})`,
+                    borderRadius: '20px 20px 0 0',
+                    zIndex: 1,
+                  }
                 }}
-              />
-            </Card>
-          </Grid>
-        ))
-      )}
-    </Grid>
+                onClick={() => handlePostClick(post.id, post.slug)}
+              >
+                <Box 
+                  className="post-gradient" 
+                  sx={{ 
+                    position: 'absolute', 
+                    top: 0, 
+                    left: 0, 
+                    right: 0, 
+                    bottom: 0, 
+                    background: theme => `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)} 0%, transparent 100%)`,
+                    opacity: 0.2,
+                    transition: 'opacity 0.3s ease',
+                    zIndex: 0,
+                  }} 
+                />
+                <PostCard 
+                  post={post} 
+                  isActionable={false} 
+                  customStyles={{ 
+                    borderRadius: '20px',
+                    height: '100%',
+                    position: 'relative',
+                    zIndex: 1,
+                  }}
+                />
+              </Card>
+            </Box>
+          ))
+        )}
+      </Box>
+    </Box>
   );
 } 

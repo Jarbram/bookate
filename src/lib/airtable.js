@@ -21,11 +21,8 @@ const airtable = {
   // Obtener todos los posts publicados con paginación
   async getPosts({ limit = 20, offset = 0, sortBy = 'publishDate', sortOrder = 'desc', category = '', search = '' }) {
     try {
-      console.log(`Iniciando petición con parámetros:`, { limit, offset, category, search });
-      
       // En el servidor, conectamos directamente con Airtable
       if (isServer()) {
-        console.log('Detectado entorno servidor, conectando directamente con Airtable');
         return await this._getPostsDirectFromAirtable({ 
           limit, 
           offset, 
@@ -74,7 +71,6 @@ const airtable = {
         };
       });
       
-      console.log(`Respuesta recibida con ${formattedPosts.length} posts`);
       return formattedPosts;
     } catch (error) {
       console.error('Error al obtener posts:', error);
@@ -91,8 +87,6 @@ const airtable = {
     }
     
     try {
-      console.log('Conectando directamente con Airtable');
-      
       // URL base de Airtable
       const airtableApiUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/Posts`;
       
@@ -126,7 +120,6 @@ const airtable = {
         }
       };
       
-      console.log('Realizando petición directa a Airtable...');
       const response = await axios.get(airtableApiUrl, config);
       
       // Formatear los registros
@@ -151,7 +144,6 @@ const airtable = {
         };
       });
       
-      console.log(`Obtenidos ${formattedPosts.length} posts directamente de Airtable`);
       return formattedPosts;
     } catch (error) {
       console.error('Error al obtener posts directamente de Airtable:', error);
@@ -178,7 +170,6 @@ const airtable = {
         try {
           const { count, timestamp } = JSON.parse(cachedCount);
           if (Date.now() - timestamp < 300000) { // 5 minutos
-            console.log(`Usando conteo en caché para ${cacheKey}: ${count}`);
             return { total: count };
           }
         } catch (e) {
@@ -259,7 +250,6 @@ const airtable = {
         }
       };
       
-      console.log(`Obteniendo conteo directo desde Airtable`);
       const response = await axios.get(airtableApiUrl, config);
       const total = response.data.records.length;
       
@@ -296,7 +286,6 @@ const airtable = {
     try {
       // En servidor, hacer petición directa
       if (isServer()) {
-        console.log(`Servidor: buscando post con slug: ${slug} directamente en Airtable`);
         return await this._getPostBySlugDirect(slug);
       }
       
@@ -307,7 +296,6 @@ const airtable = {
         return response.data.post;
       }
       
-      console.log(`No se encontró post con slug: ${slug} en API interna`);
       return null;
     } catch (error) {
       console.error(`Error al obtener post con slug ${slug}:`, error);
@@ -346,7 +334,6 @@ const airtable = {
       
       // Verificar si se encontró el post
       if (!response.data.records || response.data.records.length === 0) {
-        console.log(`No se encontró post con slug: ${slug}`);
         return null;
       }
       

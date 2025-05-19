@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   Box, 
   Container, 
@@ -74,15 +74,12 @@ const getAdPositions = (adPositions) => {
       : [];
 };
 
-// Componente de esqueleto para la página de detalle
+// Componente de esqueleto optimizado para mejorar rendimiento
 const PostDetailSkeleton = () => {
-  // Colores del tema
   const accentColor = '#6200ea';
-  const textColor = '#1a1a1a';
   
   return (
     <Box sx={{ width: '100%' }}>
-      {/* Barra de progreso superior */}
       <LinearProgress 
         sx={{ 
           position: 'fixed', 
@@ -98,7 +95,7 @@ const PostDetailSkeleton = () => {
         }} 
       />
       
-      {/* Estructura de esqueletos */}
+      {/* Estructura optimizada de esqueletos */}
       <Box sx={{ mb: 3, display: 'flex', alignItems: 'center' }}>
         <Skeleton variant="circular" width={40} height={40} sx={{ mr: 1, backgroundColor: alpha(accentColor, 0.04) }} />
         <Skeleton width={180} height={30} sx={{ backgroundColor: alpha(accentColor, 0.04) }} />
@@ -191,16 +188,19 @@ export default function PostDetail({ post }) {
   const [anchorEl, setAnchorEl] = useState(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [imageError, setImageError] = useState(false);
   
-  // Colores del tema
-  const accentColor = '#6200ea';
-  const textColor = '#1a1a1a';
-  const bgColor = '#ffffff';
+  // Colores del tema extraídos para mejor mantenimiento
+  const theme = {
+    accentColor: '#6200ea',
+    textColor: '#1a1a1a',
+    bgColor: '#ffffff'
+  };
   
-  // Procesar categorías y tags
-  const categoriesArray = getCategoriesArray(post.categories);
-  const tagsArray = getTagsArray(post.tags);
-  const adPositions = getAdPositions(post.adPositions);
+  // Procesar categorías y tags con memoización
+  const categoriesArray = useMemo(() => getCategoriesArray(post.categories), [post.categories]);
+  const tagsArray = useMemo(() => getTagsArray(post.tags), [post.tags]);
+  const adPositions = useMemo(() => getAdPositions(post.adPositions), [post.adPositions]);
   
   // Extraer URL de imagen de forma segura y robusta
   const imageUrl = useMemo(() => {
@@ -275,12 +275,14 @@ export default function PostDetail({ post }) {
     }
   }, [post.featuredImage]);
   
-  // Fecha formateada
-  const formattedDate = new Date(post.publishDate).toLocaleDateString('es-ES', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
+  // Fecha formateada con memoización
+  const formattedDate = useMemo(() => {
+    return new Date(post.publishDate).toLocaleDateString('es-ES', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  }, [post.publishDate]);
   
   // Animar la aparición de contenido
   const contentVariants = {
@@ -304,27 +306,24 @@ export default function PostDetail({ post }) {
     }
   };
   
-  // Preparar el contenido del post con inserciones de anuncios
+  // Optimizado: Preparación del contenido con mejor manejo de efectos
   useEffect(() => {
-    if (post.content) {
-      // Aquí podríamos insertar anuncios en posiciones específicas
-      setContent(post.content);
+    if (!post.content) return;
+    
+    setContent(post.content);
+    
+    const contentTimer = setTimeout(() => {
+      setContentLoaded(true);
       
-      // Simular tiempo de carga para mejor experiencia
-      const timer = setTimeout(() => {
-        setContentLoaded(true);
-        
-        // Eliminar el estado de carga después de un tiempo
-        const loadTimer = setTimeout(() => {
-          setIsLoading(false);
-        }, 300);
-        
-        return () => clearTimeout(loadTimer);
-      }, 500);
+      const loadingTimer = setTimeout(() => {
+        setIsLoading(false);
+      }, 300);
       
-      return () => clearTimeout(timer);
-    }
-  }, [post.content, adPositions]);
+      return () => clearTimeout(loadingTimer);
+    }, 500);
+    
+    return () => clearTimeout(contentTimer);
+  }, [post.content]);
   
   // Manejadores para el menú compartir
   const handleShareClick = (event) => {
@@ -356,9 +355,10 @@ export default function PostDetail({ post }) {
       });
   };
 
-  const shareOnSocial = (network) => {
+  // Optimizado: Función para compartir en redes sociales
+  const shareOnSocial = useCallback((network) => {
     const url = encodeURIComponent(window.location.href);
-    const title = encodeURIComponent(post.title);
+    const title = encodeURIComponent(post.title || '');
     const text = encodeURIComponent(post.excerpt || '');
     
     let shareUrl;
@@ -382,15 +382,21 @@ export default function PostDetail({ post }) {
     
     window.open(shareUrl, '_blank', 'width=600,height=400');
     handleCloseMenu();
-  };
+  }, [post.title, post.excerpt]);
 
   const handleSnackbarClose = () => {
     setSnackbarOpen(false);
   };
   
   return (
-    <Container maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>
-      {/* Mostrar esqueleto mientras carga */}
+    <Container 
+      maxWidth="lg" 
+      sx={{ 
+        py: { xs: 4, md: 6 }, // Ajuste para mejor espaciado en móvil
+        px: { xs: 2, sm: 3, md: 4 } 
+      }}
+    >
+      {/* Mostrar esqueleto con mejor transición */}
       {isLoading && (
         <Fade in={isLoading} timeout={300}>
           <Box>
@@ -399,8 +405,8 @@ export default function PostDetail({ post }) {
         </Fade>
       )}
       
-      {/* Contenido real con animación de entrada */}
-      <Fade in={!isLoading} timeout={500}>
+      {/* Contenido con mejor transición y estructura de animaciones */}
+      <Fade in={!isLoading} timeout={600}>
         <Box sx={{ display: isLoading ? 'none' : 'block' }}>
           <motion.div
             initial="hidden"
@@ -409,17 +415,20 @@ export default function PostDetail({ post }) {
           >
             {/* Botón de regreso */}
             <motion.div variants={itemVariants}>
-              <Box sx={{ mb: 3 }}>
+              <Box sx={{ mb: 4 }}>
                 <IconButton 
                   component={Link} 
                   href="/"
                   aria-label="Volver"
                   sx={{ 
-                    color: alpha(textColor, 0.7), 
+                    color: alpha(theme.textColor, 0.7), 
                     mb: 1,
+                    borderRadius: '8px',
+                    transition: 'all 0.3s ease',
                     '&:hover': { 
-                      backgroundColor: alpha(accentColor, 0.05),
-                      color: accentColor 
+                      backgroundColor: alpha(theme.accentColor, 0.08),
+                      color: theme.accentColor,
+                      transform: 'translateX(-4px)'
                     } 
                   }}
                 >
@@ -433,7 +442,7 @@ export default function PostDetail({ post }) {
             
             {/* Categorías del post */}
             <motion.div variants={itemVariants}>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 3 }}>
                 {categoriesArray.map((category, index) => (
                   <Chip
                     key={index}
@@ -443,11 +452,16 @@ export default function PostDetail({ post }) {
                     size="small"
                     clickable
                     sx={{
-                      backgroundColor: alpha(accentColor, 0.08),
-                      color: accentColor,
-                      fontWeight: 500,
+                      backgroundColor: alpha(theme.accentColor, 0.08),
+                      color: theme.accentColor,
+                      fontWeight: 600,
+                      fontSize: '0.8rem',
+                      borderRadius: '6px',
+                      transition: 'all 0.2s ease',
                       '&:hover': {
-                        backgroundColor: alpha(accentColor, 0.15),
+                        backgroundColor: alpha(theme.accentColor, 0.15),
+                        transform: 'translateY(-2px)',
+                        boxShadow: `0 4px 8px ${alpha(theme.accentColor, 0.15)}`
                       }
                     }}
                   />
@@ -461,11 +475,13 @@ export default function PostDetail({ post }) {
                 variant="h1" 
                 component="h1" 
                 sx={{ 
-                  fontSize: { xs: '2rem', md: '2.5rem' }, 
+                  fontSize: { xs: '2.2rem', sm: '2.5rem', md: '3rem' }, 
                   fontWeight: 800,
                   mb: 3,
-                  color: textColor,
-                  lineHeight: 1.2
+                  color: theme.textColor,
+                  lineHeight: 1.2,
+                  letterSpacing: '-0.02em',
+                  textShadow: `1px 1px 1px ${alpha(theme.textColor, 0.03)}`
                 }}
               >
                 {post.title}
@@ -481,30 +497,44 @@ export default function PostDetail({ post }) {
                   alignItems: 'center',
                   flexWrap: 'wrap',
                   gap: 2,
-                  mb: 4
+                  mb: 5,
+                  pb: 2,
+                  borderBottom: `1px solid ${alpha(theme.textColor, 0.08)}`
                 }}
               >
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <CalendarTodayIcon sx={{ fontSize: '0.9rem', color: alpha(textColor, 0.6), mr: 1 }} />
-                  <Typography variant="body2" sx={{ color: alpha(textColor, 0.7) }}>
+                <Box sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center',
+                  px: 2,
+                  py: 1,
+                  borderRadius: '20px',
+                  backgroundColor: alpha(theme.textColor, 0.03)
+                }}>
+                  <CalendarTodayIcon sx={{ fontSize: '0.9rem', color: alpha(theme.textColor, 0.6), mr: 1 }} />
+                  <Typography variant="body2" sx={{ 
+                    color: alpha(theme.textColor, 0.7),
+                    fontWeight: 500
+                  }}>
                     {formattedDate}
                   </Typography>
                 </Box>
                 
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <IconButton 
-                    aria-label="Guardar"
-                    size="small"
-                    sx={{ color: alpha(textColor, 0.6) }}
-                  >
-                    <BookmarkBorderIcon fontSize="small" />
-                  </IconButton>
-                  
-                  <IconButton 
                     aria-label="Compartir"
                     size="small"
                     onClick={handleShareClick}
-                    sx={{ color: alpha(textColor, 0.6) }}
+                    sx={{ 
+                      color: alpha(theme.textColor, 0.6),
+                      backgroundColor: alpha(theme.textColor, 0.05),
+                      borderRadius: '50%',
+                      transition: 'all 0.2s ease',
+                      '&:hover': {
+                        backgroundColor: alpha(theme.accentColor, 0.08),
+                        color: theme.accentColor,
+                        transform: 'rotate(10deg)'
+                      }
+                    }}
                   >
                     <ShareIcon fontSize="small" />
                   </IconButton>
@@ -512,24 +542,33 @@ export default function PostDetail({ post }) {
               </Box>
             </motion.div>
             
-            {/* Imagen destacada */}
+            {/* Imagen destacada con mejor manejo de errores */}
             <motion.div variants={itemVariants}>
               <Box 
                 sx={{ 
                   position: 'relative',
                   width: '100%',
-                  height: { xs: '200px', sm: '300px', md: '400px' },
-                  mb: 4,
-                  borderRadius: '12px',
+                  height: 'auto',
+                  mb: 5,
+                  borderRadius: '16px',
                   overflow: 'hidden',
-                  boxShadow: '0 4px 20px rgba(0,0,0,0.08)'
+                  boxShadow: '0 8px 30px rgba(0,0,0,0.1)', // Sombra mejorada
+                  maxHeight: { xs: '250px', sm: '400px', md: '550px' }, // Alturas más adecuadas
+                  display: 'flex',
+                  justifyContent: 'center',
+                  backgroundColor: alpha(theme.textColor, 0.03),
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    transform: 'scale(1.01)',
+                    boxShadow: '0 12px 40px rgba(0,0,0,0.15)'
+                  }
                 }}
               >
-                {!imageLoaded && (
+                {!imageLoaded && !imageError && (
                   <Skeleton 
                     variant="rectangular" 
                     width="100%" 
-                    height="100%" 
+                    height={{ xs: '250px', sm: '400px', md: '500px' }}
                     animation="wave" 
                     sx={{ transform: 'none' }}
                   />
@@ -538,17 +577,38 @@ export default function PostDetail({ post }) {
                 <Image
                   src={imageUrl}
                   alt={post.title || 'Imagen del artículo'}
-                  fill
+                  width={1200}
+                  height={800}
                   priority
                   sizes="(max-width: 600px) 100vw, (max-width: 960px) 90vw, 1200px"
                   style={{ 
-                    objectFit: 'cover',
-                    objectPosition: 'center',
+                    objectFit: 'cover', // Cambiado a cover para mejor visualización 
+                    width: '100%',
+                    height: '100%', // Asegura que la imagen llene el contenedor
                     opacity: imageLoaded ? 1 : 0,
-                    transition: 'opacity 0.5s ease'
+                    transition: 'opacity 0.5s ease',
+                    display: imageError ? 'none' : 'block'
                   }}
                   onLoad={() => setImageLoaded(true)}
+                  onError={() => setImageError(true)}
                 />
+                
+                {imageError && (
+                  <Box sx={{ 
+                    p: 4, 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    height: { xs: '200px', sm: '300px' }, 
+                    width: '100%',
+                    color: alpha(theme.textColor, 0.5),
+                    textAlign: 'center'
+                  }}>
+                    <Typography>
+                      No se pudo cargar la imagen
+                    </Typography>
+                  </Box>
+                )}
               </Box>
             </motion.div>
             
@@ -561,34 +621,56 @@ export default function PostDetail({ post }) {
               </motion.div>
             )}
             
-            {/* Contenido principal */}
+            {/* Contenido principal (Markdown) con estilos mejorados */}
             <motion.div variants={itemVariants}>
               <Paper
                 elevation={0}
                 sx={{
-                  p: { xs: 2, md: 4 },
-                  borderRadius: '12px',
-                  backgroundColor: bgColor,
+                  p: { xs: 3, md: 5 },
+                  borderRadius: '16px',
+                  backgroundColor: theme.bgColor,
                   border: '1px solid rgba(0,0,0,0.05)',
-                  mb: 4
+                  mb: 5,
+                  boxShadow: '0 4px 30px rgba(0,0,0,0.04)'
                 }}
               >
                 {/* Extracto destacado */}
                 <Box
                   sx={{
                     p: 3,
-                    backgroundColor: alpha(accentColor, 0.05),
-                    borderLeft: `4px solid ${accentColor}`,
-                    borderRadius: '4px',
-                    mb: 4
+                    backgroundColor: alpha(theme.accentColor, 0.05),
+                    borderLeft: `4px solid ${theme.accentColor}`,
+                    borderRadius: '8px',
+                    mb: 5,
+                    position: 'relative',
                   }}
                 >
+                  {/* Comilla decorativa como componente separado */}
+                  <Typography
+                    component="span"
+                    sx={{
+                      position: 'absolute',
+                      top: '-25px',
+                      left: '20px',
+                      fontSize: '3.5rem',
+                      color: alpha(theme.accentColor, 0.2),
+                      fontFamily: 'serif',
+                      lineHeight: 1,
+                      userSelect: 'none',
+                      pointerEvents: 'none'
+                    }}
+                  >
+                    "
+                  </Typography>
+                  
                   <Typography
                     variant="subtitle1"
                     sx={{
                       fontStyle: 'italic',
                       fontWeight: 500,
-                      color: alpha(textColor, 0.85)
+                      color: alpha(theme.textColor, 0.85),
+                      fontSize: '1.1rem',
+                      lineHeight: 1.6
                     }}
                   >
                     {post.excerpt}
@@ -605,73 +687,129 @@ export default function PostDetail({ post }) {
                 {/* Contenido principal (Markdown) */}
                 <Box className="markdown-content" sx={{ 
                   '& h1': { 
-                    fontSize: '1.9rem', 
+                    fontSize: { xs: '1.8rem', md: '2rem' }, // Tamaño responsive
                     fontWeight: 700, 
-                    mt: 4, 
-                    mb: 2, 
-                    color: textColor 
+                    mt: 5, 
+                    mb: 3, 
+                    color: theme.textColor,
+                    position: 'relative',
+                    '&::after': {
+                      content: '""',
+                      position: 'absolute',
+                      bottom: '-8px',
+                      left: 0,
+                      width: '60px',
+                      height: '4px',
+                      backgroundColor: theme.accentColor,
+                      borderRadius: '2px'
+                    }
                   },
                   '& h2': { 
-                    fontSize: '1.5rem', 
+                    fontSize: { xs: '1.4rem', md: '1.6rem' }, // Tamaño responsive
                     fontWeight: 700, 
                     mt: 4, 
-                    mb: 2, 
-                    color: textColor,
-                    borderBottom: `1px solid ${alpha(textColor, 0.1)}`,
-                    paddingBottom: '0.5rem'
+                    mb: 3, 
+                    color: theme.textColor,
+                    borderBottom: `1px solid ${alpha(theme.textColor, 0.1)}`,
+                    paddingBottom: '0.7rem'
                   },
                   '& h3': { 
-                    fontSize: '1.25rem', 
+                    fontSize: '1.3rem', 
                     fontWeight: 600, 
-                    mt: 3, 
-                    mb: 2, 
-                    color: textColor 
+                    mt: 3.5, 
+                    mb: 2.5, 
+                    color: theme.textColor,
+                    position: 'relative',
+                    paddingLeft: '14px',
+                    '&::before': {
+                      content: '""',
+                      position: 'absolute',
+                      left: 0,
+                      top: '8px',
+                      width: '6px',
+                      height: '16px',
+                      backgroundColor: alpha(theme.accentColor, 0.5),
+                      borderRadius: '3px'
+                    }
                   },
                   '& p': { 
-                    fontSize: '1.05rem', 
-                    lineHeight: 1.7, 
-                    my: 2,
-                    color: alpha(textColor, 0.85)
+                    fontSize: { xs: '1rem', md: '1.1rem' }, // Tamaño responsive
+                    lineHeight: 1.8, 
+                    my: 2.5,
+                    color: alpha(theme.textColor, 0.85)
                   },
                   '& a': { 
-                    color: accentColor, 
+                    color: theme.accentColor, 
                     textDecoration: 'none',
-                    borderBottom: `1px solid ${alpha(accentColor, 0.3)}`,
+                    borderBottom: `1px solid ${alpha(theme.accentColor, 0.3)}`,
                     transition: 'all 0.2s ease',
+                    position: 'relative',
+                    padding: '0 2px',
                     '&:hover': {
-                      borderBottom: `1px solid ${accentColor}`,
-                      backgroundColor: alpha(accentColor, 0.05)
+                      borderBottom: `2px solid ${theme.accentColor}`,
+                      backgroundColor: alpha(theme.accentColor, 0.05)
                     }
                   },
                   '& ul, & ol': { 
                     pl: 4, 
-                    my: 2 
+                    my: 3,
+                    '& ul, & ol': {
+                      my: 1
+                    }
                   },
                   '& li': { 
-                    mb: 1,
-                    color: alpha(textColor, 0.85)
+                    mb: 1.5,
+                    color: alpha(theme.textColor, 0.85),
+                    paddingLeft: '0.5rem'
                   },
                   '& blockquote': { 
-                    borderLeft: `4px solid ${alpha(accentColor, 0.5)}`,
-                    pl: 2,
-                    py: 0.5, 
-                    my: 3,
+                    borderLeft: `4px solid ${alpha(theme.accentColor, 0.5)}`,
+                    pl: 3,
+                    py: 1, 
+                    my: 4,
                     fontStyle: 'italic',
-                    backgroundColor: alpha(accentColor, 0.05),
-                    borderRadius: '0 4px 4px 0',
+                    backgroundColor: alpha(theme.accentColor, 0.05),
+                    borderRadius: '0 8px 8px 0',
+                    boxShadow: `inset 0 0 15px ${alpha(theme.accentColor, 0.03)}`,
                     '& p': {
-                      color: alpha(textColor, 0.75)
+                      color: alpha(theme.textColor, 0.75),
+                      fontSize: { xs: '1rem', md: '1.05rem' } // Tamaño responsive
                     }
                   },
                   '& img': { 
                     maxWidth: '100%',
-                    borderRadius: '8px',
-                    my: 3
+                    height: 'auto',
+                    borderRadius: '12px',
+                    my: 4,
+                    display: 'block',
+                    margin: '2.5rem auto',
+                    boxShadow: '0 5px 20px rgba(0,0,0,0.1)'
                   },
                   '& hr': { 
-                    my: 4,
+                    my: 5,
                     border: 'none',
-                    borderTop: `1px solid ${alpha(textColor, 0.1)}`
+                    height: '1px',
+                    backgroundImage: `linear-gradient(to right, ${alpha(theme.textColor, 0)}, ${alpha(theme.textColor, 0.15)}, ${alpha(theme.textColor, 0)})`,
+                    margin: '30px auto'
+                  },
+                  '& code': {
+                    backgroundColor: alpha(theme.textColor, 0.06),
+                    padding: '3px 6px',
+                    borderRadius: '4px',
+                    fontSize: '0.9em',
+                    fontFamily: 'monospace'
+                  },
+                  '& pre': {
+                    backgroundColor: alpha(theme.textColor, 0.06),
+                    padding: { xs: '12px', md: '16px' },
+                    borderRadius: '8px',
+                    overflow: 'auto',
+                    boxShadow: `inset 0 0 20px ${alpha(theme.textColor, 0.03)}`,
+                    // Asegurar que el código no rompa el layout en móvil
+                    maxWidth: '100%',
+                    overflowX: 'auto',
+                    whiteSpace: 'pre-wrap',
+                    wordWrap: 'break-word'
                   }
                 }}>
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
@@ -692,7 +830,13 @@ export default function PostDetail({ post }) {
             
             {/* Etiquetas */}
             <motion.div variants={itemVariants}>
-              <Box sx={{ mb: 4 }}>
+              <Box sx={{ 
+                mb: 5, 
+                p: 3, 
+                borderRadius: '12px',
+                backgroundColor: alpha(theme.textColor, 0.02),
+                border: `1px solid ${alpha(theme.textColor, 0.06)}`
+              }}>
                 <Typography 
                   variant="h6" 
                   sx={{ 
@@ -700,10 +844,15 @@ export default function PostDetail({ post }) {
                     alignItems: 'center', 
                     fontWeight: 600, 
                     mb: 2,
-                    fontSize: '1rem'
+                    fontSize: '1.1rem',
+                    color: alpha(theme.textColor, 0.8)
                   }}
                 >
-                  <LocalOfferIcon sx={{ mr: 1, fontSize: '1.1rem', color: alpha(textColor, 0.6) }} />
+                  <LocalOfferIcon sx={{ 
+                    mr: 1.5, 
+                    fontSize: '1.2rem', 
+                    color: alpha(theme.textColor, 0.6)
+                  }} />
                   Etiquetas
                 </Typography>
                 
@@ -717,15 +866,19 @@ export default function PostDetail({ post }) {
                       size="small"
                       clickable
                       sx={{
-                        backgroundColor: alpha(textColor, 0.08),
-                        color: alpha(textColor, 0.8),
+                        backgroundColor: alpha(theme.textColor, 0.06),
+                        color: alpha(theme.textColor, 0.85),
+                        borderRadius: '6px',
+                        fontWeight: 500,
+                        transition: 'all 0.2s ease',
                         '&:hover': {
-                          backgroundColor: alpha(textColor, 0.15),
+                          backgroundColor: alpha(theme.textColor, 0.12),
+                          transform: 'translateY(-2px)'
                         }
                       }}
                     />
                   )) : (
-                    <Typography variant="body2" sx={{ color: alpha(textColor, 0.6) }}>
+                    <Typography variant="body2" sx={{ color: alpha(theme.textColor, 0.6) }}>
                       No hay etiquetas disponibles
                     </Typography>
                   )}
@@ -735,14 +888,25 @@ export default function PostDetail({ post }) {
             
             {/* Posts relacionados */}
             <motion.div variants={itemVariants}>
-              <Box sx={{ mb: 4 }}>
+              <Box sx={{ mb: 5 }}>
                 <Typography 
                   variant="h5" 
                   sx={{ 
                     fontWeight: 700, 
-                    mb: 3, 
-                    pb: 1,
-                    borderBottom: `1px solid ${alpha(textColor, 0.1)}`
+                    mb: 3.5, 
+                    pb: 1.5,
+                    position: 'relative',
+                    display: 'inline-block',
+                    '&::after': {
+                      content: '""',
+                      position: 'absolute',
+                      bottom: 0,
+                      left: 0,
+                      width: '80%',
+                      height: '3px',
+                      backgroundColor: theme.accentColor,
+                      borderRadius: '3px'
+                    }
                   }}
                 >
                   También te podría interesar
@@ -759,7 +923,7 @@ export default function PostDetail({ post }) {
         </Box>
       </Fade>
       
-      {/* Agregar menú de compartir */}
+      {/* Menú de compartir mejorado */}
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
@@ -773,40 +937,56 @@ export default function PostDetail({ post }) {
           horizontal: 'right',
         }}
         PaperProps={{
-          elevation: 3,
+          elevation: 6, // Mayor elevación para mejor visibilidad
           sx: {
             borderRadius: '12px',
-            mt: 1,
-            minWidth: 200,
+            mt: 1.5,
+            minWidth: 220,
+            overflow: 'hidden',
+            border: '1px solid rgba(0,0,0,0.05)'
           }
         }}
       >
-        <MenuItem onClick={() => shareOnSocial('facebook')}>
+        <Box sx={{ 
+          p: 1.5, 
+          pb: 0.5, 
+          backgroundColor: alpha(theme.accentColor, 0.05),
+          borderBottom: `1px solid ${alpha(theme.accentColor, 0.1)}`
+        }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 600, color: alpha(theme.textColor, 0.7) }}>
+            Compartir artículo
+          </Typography>
+        </Box>
+        
+        <MenuItem onClick={() => shareOnSocial('facebook')} sx={{ py: 1.5 }}>
           <ListItemIcon>
             <FacebookIcon fontSize="small" sx={{ color: '#1877F2' }} />
           </ListItemIcon>
           <ListItemText>Facebook</ListItemText>
         </MenuItem>
-        <MenuItem onClick={() => shareOnSocial('twitter')}>
+        
+        <MenuItem onClick={() => shareOnSocial('twitter')} sx={{ py: 1.5 }}>
           <ListItemIcon>
             <TwitterIcon fontSize="small" sx={{ color: '#1DA1F2' }} />
           </ListItemIcon>
           <ListItemText>Twitter</ListItemText>
         </MenuItem>
-        <MenuItem onClick={() => shareOnSocial('linkedin')}>
+        
+        <MenuItem onClick={() => shareOnSocial('linkedin')} sx={{ py: 1.5 }}>
           <ListItemIcon>
             <LinkedInIcon fontSize="small" sx={{ color: '#0A66C2' }} />
           </ListItemIcon>
           <ListItemText>LinkedIn</ListItemText>
         </MenuItem>
-        <MenuItem onClick={() => shareOnSocial('whatsapp')}>
+        
+        <MenuItem onClick={() => shareOnSocial('whatsapp')} sx={{ py: 1.5 }}>
           <ListItemIcon>
             <WhatsAppIcon fontSize="small" sx={{ color: '#25D366' }} />
           </ListItemIcon>
           <ListItemText>WhatsApp</ListItemText>
         </MenuItem>
-        <Divider />
-        <MenuItem onClick={copyToClipboard}>
+        
+        <MenuItem onClick={copyToClipboard} sx={{ py: 1.5 }}>
           <ListItemIcon>
             <ContentCopyIcon fontSize="small" />
           </ListItemIcon>
@@ -814,14 +994,23 @@ export default function PostDetail({ post }) {
         </MenuItem>
       </Menu>
       
-      {/* Snackbar para notificar copiado */}
+      {/* Snackbar mejorado */}
       <Snackbar 
         open={snackbarOpen} 
         autoHideDuration={3000} 
         onClose={handleSnackbarClose}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        sx={{ mb: { xs: 2, md: 4 } }} // Mejor posicionamiento en móvil
       >
-        <Alert onClose={handleSnackbarClose} severity="success" variant="filled">
+        <Alert 
+          onClose={handleSnackbarClose} 
+          severity="success" 
+          variant="filled"
+          sx={{
+            borderRadius: '10px',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
+          }}
+        >
           {snackbarMessage}
         </Alert>
       </Snackbar>

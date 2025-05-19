@@ -146,6 +146,83 @@ export default function Categories({ displayMode = "vertical", onCategoryChange 
     return () => clearTimeout(scrollTimer);
   }, [currentCategory, displayMode, isMobile]);
   
+  // Reemplazar la generación de colores para categorías con un método que asegure colores únicos
+  const categoryColors = useMemo(() => {
+    // Paleta de colores ampliada y variada para categorías (colores más distintos)
+    const colorPalette = [
+      '#6200ea', // Morado
+      '#2962ff', // Azul intenso
+      '#00c853', // Verde
+      '#ff6d00', // Naranja
+      '#d50000', // Rojo
+      '#aa00ff', // Púrpura
+      '#0091ea', // Azul
+      '#00bfa5', // Turquesa
+      '#ffab00', // Ámbar
+      '#ff4081', // Rosa
+      '#ff9100', // Naranja intenso
+      '#00b8d4', // Cian
+      '#64dd17', // Lima
+      '#304ffe', // Índigo
+      '#c51162', // Fucsia
+    ];
+    
+    // Función para generar colores aleatorios si necesitamos más
+    const generateRandomColor = () => {
+      const hue = Math.floor(Math.random() * 360);
+      return `hsl(${hue}, 80%, 50%)`;
+    };
+    
+    // Generar un mapa de colores únicos para cada categoría
+    const colorMap = {};
+    
+    // Asignar "Todas" al color original
+    colorMap['all'] = accentColor;
+    
+    // Crear una copia de la paleta para que podamos eliminar colores ya usados
+    const availableColors = [...colorPalette];
+    
+    // Asignar un color único a cada categoría
+    orderedCategories.forEach((category) => {
+      if (availableColors.length > 0) {
+        // Tomar un color aleatorio de los disponibles
+        const randomIndex = Math.floor(Math.random() * availableColors.length);
+        const selectedColor = availableColors[randomIndex];
+        
+        // Eliminar el color seleccionado para no volver a usarlo
+        availableColors.splice(randomIndex, 1);
+        
+        colorMap[category.name] = selectedColor;
+      } else {
+        // Si nos quedamos sin colores, generar uno aleatorio
+        colorMap[category.name] = generateRandomColor();
+      }
+    });
+    
+    return colorMap;
+  }, [orderedCategories, accentColor]);
+
+  // Función para obtener el gradiente basado en el color de la categoría
+  const getCategoryGradient = useCallback((categoryName, type = 'primary') => {
+    const baseColor = categoryName ? categoryColors[categoryName] : categoryColors['all'];
+    
+    // Si el color no existe, usar el color de acento por defecto
+    const color = baseColor || accentColor;
+    
+    switch(type) {
+      case 'primary':
+        return `linear-gradient(135deg, ${color} 0%, ${alpha(color, 0.8)} 100%)`;
+      case 'selected':
+        return `linear-gradient(135deg, ${color} 0%, ${alpha(color, 0.7)} 100%)`;
+      case 'hover':
+        return `linear-gradient(135deg, ${alpha(color, 0.9)} 0%, ${color} 100%)`;
+      case 'light':
+        return `linear-gradient(135deg, ${alpha(color, 0.05)} 0%, ${alpha(color, 0.05)} 100%)`;
+      default:
+        return `linear-gradient(135deg, ${color} 0%, ${alpha(color, 0.8)} 100%)`;
+    }
+  }, [categoryColors, accentColor]);
+  
   // Optimización: Mostrar esqueleto mejorado durante carga
   if (loading) {
     return (
@@ -384,7 +461,7 @@ export default function Categories({ displayMode = "vertical", onCategoryChange 
                 <Box sx={{ 
                   display: 'flex', 
                   alignItems: 'center', 
-                  fontWeight: !currentCategory ? 'bold' : 'medium',
+                  fontWeight: 'medium',
                   fontSize: '0.75rem'
                 }}>
                   <span>Todas</span>
@@ -397,13 +474,17 @@ export default function Categories({ displayMode = "vertical", onCategoryChange 
                 py: 0.5,
                 height: 'auto',
                 minWidth: '60px',
-                background: !currentCategory ? gradients.selected : 'white',
-                color: !currentCategory ? 'white' : 'rgba(0,0,0,0.7)',
-                boxShadow: !currentCategory ? '0 2px 6px rgba(98, 0, 234, 0.25)' : '0 1px 2px rgba(0,0,0,0.08)',
-                border: !currentCategory ? 'none' : `1px solid ${alpha(accentColor, 0.1)}`,
+                bgcolor: categoryColors['all'] || accentColor,
+                color: 'white',
+                boxShadow: !currentCategory 
+                  ? `0 2px 6px ${alpha(accentColor, 0.5)}` 
+                  : 'none',
+                opacity: !currentCategory ? 1 : 0.75,
+                border: 'none',
                 transition: 'all 0.2s ease-out',
                 '&:hover': {
-                  background: !currentCategory ? gradients.hover : alpha(accentColor, 0.08)
+                  bgcolor: categoryColors['all'] || accentColor,
+                  opacity: 0.9,
                 }
               }}
             />
@@ -425,9 +506,9 @@ export default function Categories({ displayMode = "vertical", onCategoryChange 
                   label={
                     <Box sx={{ 
                       display: 'flex', 
-                      flexDirection: 'column', 
+                      flexDirection: isMobile ? 'row' : 'column', 
                       alignItems: 'center', 
-                      fontWeight: isSelected ? 'bold' : 'medium',
+                      fontWeight: 'medium',
                       fontSize: '0.75rem'
                     }}>
                       <span>{category.name}</span>
@@ -436,10 +517,14 @@ export default function Categories({ displayMode = "vertical", onCategoryChange 
                         sx={{ 
                           fontSize: '0.65rem', 
                           opacity: 0.8,
-                          mt: 0.1 
+                          mt: isMobile ? 0 : 0.1,
+                          ml: isMobile ? 0.5 : 0,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
                         }}
                       >
-                        {category.count}
+                        {isMobile ? `(${category.count})` : category.count}
                       </Box>
                     </Box>
                   }
@@ -449,14 +534,18 @@ export default function Categories({ displayMode = "vertical", onCategoryChange 
                     borderRadius: '16px',
                     py: 0.5,
                     height: 'auto',
-                    minWidth: '70px',
-                    background: isSelected ? gradients.selected : 'white',
-                    color: isSelected ? 'white' : 'rgba(0,0,0,0.7)',
-                    boxShadow: isSelected ? '0 2px 6px rgba(98, 0, 234, 0.25)' : '0 1px 2px rgba(0,0,0,0.08)',
-                    border: isSelected ? 'none' : `1px solid ${alpha(accentColor, 0.1)}`,
+                    minWidth: isMobile ? '50px' : '70px',
+                    bgcolor: categoryColors[category.name] || accentColor,
+                    color: 'white',
+                    boxShadow: isSelected 
+                      ? `0 2px 6px ${alpha(categoryColors[category.name] || accentColor, 0.5)}` 
+                      : 'none',
+                    opacity: isSelected ? 1 : 0.75,
+                    border: 'none',
                     transition: 'all 0.2s ease-out',
                     '&:hover': {
-                      background: isSelected ? gradients.hover : alpha(accentColor, 0.08)
+                      bgcolor: categoryColors[category.name] || accentColor,
+                      opacity: 0.9,
                     }
                   }}
                 />
@@ -659,15 +748,15 @@ export default function Categories({ displayMode = "vertical", onCategoryChange 
                       top: 0,
                       width: '4px',
                       height: '100%',
-                      background: gradients.primary,
+                      background: getCategoryGradient(category.name, 'primary'),
                       borderRadius: '2px'
                     } : {},
                     '&.Mui-selected': {
-                      color: accentColor,
+                      color: categoryColors[category.name] || accentColor,
                       fontWeight: 'bold',
-                      background: alpha(accentColor, 0.05),
+                      background: alpha(categoryColors[category.name] || accentColor, 0.05),
                       '&:hover': {
-                        background: alpha(accentColor, 0.1),
+                        background: alpha(categoryColors[category.name] || accentColor, 0.1),
                       }
                     }
                   }}
@@ -683,7 +772,7 @@ export default function Categories({ displayMode = "vertical", onCategoryChange 
                           component="span" 
                           sx={{ 
                             fontWeight: isSelected ? 'bold' : 'normal',
-                            color: isSelected ? accentColor : 'inherit',
+                            color: isSelected ? categoryColors[category.name] || accentColor : 'inherit',
                             fontSize: '0.85rem'
                           }}
                         >
@@ -694,7 +783,7 @@ export default function Categories({ displayMode = "vertical", onCategoryChange 
                           color={isSelected ? "primary" : "default"} 
                           sx={{ 
                             '& .MuiBadge-badge': { 
-                              background: isSelected ? gradients.primary : alpha(accentColor, 0.2),
+                              background: isSelected ? getCategoryGradient(category.name, 'primary') : alpha(categoryColors[category.name] || accentColor, 0.2),
                               fontSize: '0.7rem'
                             } 
                           }}
