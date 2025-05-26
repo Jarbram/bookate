@@ -10,7 +10,7 @@ import {
   Card
 } from '@mui/material';
 import PostCard from './PostCard';
-import airtable from '../../lib/airtable';
+import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
 export default function RelatedPosts({ currentPostId, categories = [], tags = [], limit = 3 }) {
@@ -29,63 +29,75 @@ export default function RelatedPosts({ currentPostId, categories = [], tags = []
   
   useEffect(() => {
     const fetchRelatedPosts = async () => {
+      if (!currentPostId || currentPostId.startsWith('rec')) {
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         setError(null);
         
         let allPosts = [];
         
-        if (categories.length > 0) {
-          const categoryPromises = categories.slice(0, 2).map(category => 
-            airtable.getPosts({
-              limit: limit + 1,
-              category: category
-            })
-          );
-          
-          const categoryResults = await Promise.all(categoryPromises);
-          
-          for (const posts of categoryResults) {
-            const filteredPosts = posts.filter(post => post.id !== currentPostId);
-            allPosts = [...allPosts, ...filteredPosts];
+        // Buscar por categorías
+        if (categories?.length > 0) {
+          const { data: categoryPosts, error } = await supabase
+            .from('posts')
+            .select('*')
+            .neq('id', currentPostId)
+            .eq('status', 'published')
+            .contains('categories', categories)
+            .order('publishDate', { ascending: false })
+            .limit(limit + 1);
+
+          if (error) {
+            console.error('Error en búsqueda por categorías:', error.message);
+            throw error;
           }
           
-          allPosts = allPosts.filter((post, index, self) => 
-            index === self.findIndex(p => p.id === post.id)
-          );
+          allPosts = categoryPosts || [];
         }
         
-        if (allPosts.length < limit && tags.length > 0) {
-          const tagPromises = tags.slice(0, 2).map(tag => 
-            airtable.getPosts({
-              limit: limit + 1,
-              tag: tag
-            })
-          );
-          
-          const tagResults = await Promise.all(tagPromises);
-          
-          for (const posts of tagResults) {
-            const filteredPosts = posts.filter(post => 
-              post.id !== currentPostId && 
-              !allPosts.some(p => p.id === post.id)
-            );
-            
-            allPosts = [...allPosts, ...filteredPosts];
+        // Si no hay suficientes posts, buscar por tags
+        if (allPosts.length < limit && tags?.length > 0) {
+          const { data: tagPosts, error } = await supabase
+            .from('posts')
+            .select('*')
+            .neq('id', currentPostId)
+            .eq('status', 'published')
+            .contains('tags', tags.slice(0, 2))
+            .order('publishDate', { ascending: false })
+            .limit(limit + 1);
+
+          if (error) {
+            console.error('Error en búsqueda por tags:', error.message);
+            throw error;
           }
           
-          allPosts = allPosts.filter((post, index, self) => 
-            index === self.findIndex(p => p.id === post.id)
+          const newTagPosts = (tagPosts || []).filter(post => 
+            !allPosts.some(p => p.id === post.id)
           );
+          
+          allPosts = [...allPosts, ...newTagPosts];
         }
         
+        // Si aún no hay suficientes posts, obtener los más recientes
         if (allPosts.length < limit) {
-          const recentPosts = await airtable.getPosts({
-            limit: limit + 5
-          });
+          const { data: recentPosts, error } = await supabase
+            .from('posts')
+            .select('*')
+            .neq('id', currentPostId)
+            .eq('status', 'published')
+            .order('publishDate', { ascending: false })
+            .limit(limit + 5);
+
+          if (error) {
+            console.error('Error en búsqueda de posts recientes:', error.message);
+            throw error;
+          }
           
-          const newRecentPosts = recentPosts.filter(post => 
-            post.id !== currentPostId && 
+          const newRecentPosts = (recentPosts || []).filter(post => 
             !allPosts.some(p => p.id === post.id)
           );
           
@@ -95,16 +107,14 @@ export default function RelatedPosts({ currentPostId, categories = [], tags = []
         setRelatedPosts(allPosts.slice(0, limit));
         
       } catch (error) {
-        console.error('Error al cargar posts relacionados:', error);
+        console.error('Error al cargar posts relacionados:', error.message || error);
         setError('No pudimos cargar artículos relacionados. Por favor, inténtalo de nuevo más tarde.');
       } finally {
         setLoading(false);
       }
     };
     
-    if (currentPostId) {
-      fetchRelatedPosts();
-    }
+    fetchRelatedPosts();
   }, [currentPostId, categories, tags, limit]);
   
   if (error) {

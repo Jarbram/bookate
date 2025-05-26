@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import airtable from '@/lib/airtable';
+import { supabase } from '@/lib/supabase';
 import PostPageClient from '@/components/Posts/PostPageClient';
 
 // Definir la generación estática/dinámica
@@ -53,9 +53,20 @@ function serializePostForClient(post) {
   };
 }
 
+// Función para obtener post por slug usando Supabase
+async function getPostBySlug(slug) {
+  const { data: post, error } = await supabase
+    .from('posts')
+    .select('*')
+    .eq('slug', slug)
+    .single();
+    
+  if (error) throw error;
+  return post;
+}
+
 // Generación de metadatos para SEO
 export async function generateMetadata(props) {
-  // Extraer el slug de forma segura
   const slug = String(props.params?.slug || '');
   
   if (!slug) {
@@ -66,8 +77,7 @@ export async function generateMetadata(props) {
   }
   
   try {
-    // Usar método directo de airtable para obtener post desde el servidor
-    const post = await airtable._getPostBySlugDirect(slug);
+    const post = await getPostBySlug(slug);
     
     if (!post) {
       return {
@@ -76,7 +86,6 @@ export async function generateMetadata(props) {
       };
     }
     
-    // Extraer URL de imagen para metadatos
     const imageUrl = getImageUrlForMeta(post.featuredImage);
     
     return {
@@ -101,15 +110,13 @@ export async function generateMetadata(props) {
 // Función principal de la página
 export default async function PostPage(props) {
   try {
-    // Extraer el slug de forma segura
     const slug = String(props.params?.slug || '');
     
     if (!slug) {
       notFound();
     }
     
-    // Cargar el post usando método directo para servidor
-    const initialPost = await airtable._getPostBySlugDirect(slug);
+    const initialPost = await getPostBySlug(slug);
     
     if (!initialPost) {
       notFound();

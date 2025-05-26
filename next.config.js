@@ -3,8 +3,9 @@ const nextConfig = {
   reactStrictMode: true,
   images: {
     domains: [
-      'via.placeholder.com',
+      'clfbzmtvnfiltzdmfuvy.supabase.co',
       'v5.airtableusercontent.com',
+      'via.placeholder.com',
       'picsum.photos',
       'images.unsplash.com'
     ],

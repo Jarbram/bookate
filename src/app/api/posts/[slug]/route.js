@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import axios from 'axios';
+import { supabase } from '@/lib/supabase';
 
 export async function GET(request, { params }) {
   const slug = params.slug;
@@ -9,30 +9,24 @@ export async function GET(request, { params }) {
   }
   
   try {
-    // URL base de Airtable
-    const airtableApiUrl = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/Posts`;
-    
-    // Escapar el slug para evitar problemas con caracteres especiales
-    const escapedSlug = slug.replace(/"/g, '\\"');
-    const filterByFormula = `AND({status}="published", {slug}="${escapedSlug}")`;
-    
-    // Realizar petición a Airtable
-    const response = await axios.get(airtableApiUrl, {
-      params: {
-        filterByFormula,
-        maxRecords: 1
-      },
-      headers: {
-        'Authorization': `Bearer ${process.env.AIRTABLE_API_KEY}`
-      }
-    });
-    
-    if (!response.data.records || response.data.records.length === 0) {
+    const { data: post, error } = await supabase
+      .from('posts')
+      .select(`
+        *,
+        categories:posts_categories(categories(*)),
+        tags:posts_tags(tags(*))
+      `)
+      .eq('status', 'published')
+      .eq('slug', slug)
+      .single();
+
+    if (error) throw error;
+
+    if (!post) {
       return NextResponse.json({ error: 'Post no encontrado' }, { status: 404 });
     }
-    
-    const record = response.data.records[0];
-    return NextResponse.json({ post: record });
+
+    return NextResponse.json({ post });
   } catch (error) {
     console.error(`Error al obtener post con slug ${slug}:`, error);
     return NextResponse.json({ error: 'Error al obtener post' }, { status: 500 });

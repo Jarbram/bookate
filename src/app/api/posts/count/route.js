@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import axios from 'axios';
+import { supabase } from '@/lib/supabase';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -7,36 +7,26 @@ export async function GET(request) {
   const tag = searchParams.get('tag') || '';
   
   try {
-    // URL base de Airtable
-    const airtableApiUrl = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/Posts`;
-    
-    // Crear fórmula de filtro
-    let filterByFormula = "{status}='published'";
+    let query = supabase
+      .from('posts')
+      .select('id', { count: 'exact' })
+      .eq('status', 'published');
     
     if (category) {
-      filterByFormula = `AND({status}='published', FIND("${category}", {categories}))`;
+      query = query.contains('categories', [category]);
     }
     
     if (tag) {
-      filterByFormula = `AND({status}='published', FIND("${tag}", {tags}))`;
+      query = query.contains('tags', [tag]);
     }
     
-    // Configuración para la solicitud (solo recuperar IDs para contar)
-    const response = await axios.get(airtableApiUrl, {
-      params: {
-        filterByFormula,
-        fields: ['id']
-      },
-      headers: {
-        Authorization: `Bearer ${process.env.AIRTABLE_API_KEY}`
-      }
-    });
+    const { count, error } = await query;
     
-    const total = response.data.records.length;
+    if (error) throw error;
     
-    return NextResponse.json({ total });
+    return NextResponse.json({ total: count || 0 });
   } catch (error) {
-    console.error('Error al contar posts de Airtable:', error);
-    return NextResponse.json({ error: 'Error al contar datos', total: 0 }, { status: 500 });
+    console.error('Error al contar posts:', error);
+    return NextResponse.json({ error: 'Error al contar posts', total: 0 }, { status: 500 });
   }
 } 

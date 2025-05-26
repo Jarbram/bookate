@@ -180,7 +180,20 @@ export default function SearchBox({ darkMode = false }) {
   
   const handleSearch = (e) => {
     e.preventDefault();
-    updateSearchParams(searchValue);
+    const params = new URLSearchParams(searchParams);
+    
+    // Limpiar parámetros de paginación al realizar nueva búsqueda
+    params.delete('page');
+    
+    if (searchValue.trim()) {
+      params.set('search', searchValue.trim());
+    } else {
+      params.delete('search');
+    }
+    
+    // Actualizar URL y guardar en historial
+    router.push(`?${params.toString()}`);
+    saveToHistory(searchValue.trim());
     setIsSearching(true);
     setTimeout(() => setIsSearching(false), 800);
   };

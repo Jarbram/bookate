@@ -1,802 +1,260 @@
 'use client';
-import { useRef, useMemo, useEffect, useCallback } from 'react';
-import { 
-  Box, 
-  Typography, 
-  List, 
-  ListItem, 
-  ListItemText, 
-  ListItemButton,
-  Chip,
-  Stack,
-  alpha,
-  Badge,
-  useMediaQuery,
-  useTheme
-} from '@mui/material';
-import { motion } from 'framer-motion';
+import { Box, Typography, alpha, useTheme } from '@mui/material';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import CategoryIcon from '@mui/icons-material/Category';
-import LabelIcon from '@mui/icons-material/Label';
-import useCategories from '../../hooks/useCategories';
-import { useRouter } from 'next/navigation';
+import { useCategories } from '@/hooks/useCategories';
 
-export default function Categories({ displayMode = "vertical", onCategoryChange }) {
-  // Referencias para optimización de scroll y renderizado
-  const horizontalScrollRef = useRef(null);
-  const selectedCategoryRef = useRef(null);
-  const previousCategoryRef = useRef('');
-  const isInitialMountRef = useRef(true);
-  
+const CategoryItem = ({ category, isSelected, onClick }) => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   
-  const router = useRouter();
-  
-  // Usar nuestro hook personalizado con optimizaciones
-  const { 
-    categories, 
-    orderedCategories, 
-    loading, 
-    error, 
-    currentCategory,
-    handleCategoryClick,
-    isCategorySelected
-  } = useCategories({ onCategoryChange });
-  
-  // Colores y estilos - memoizados para evitar recreaciones
-  const accentColor = '#6200ea';
-  const gradients = useMemo(() => ({
-    primary: 'linear-gradient(135deg, #6200ea 0%, #9d4edd 100%)',
-    selected: 'linear-gradient(135deg, #6200ea 0%, #bb86fc 100%)',
-    hover: 'linear-gradient(135deg, #3700b3 0%, #6200ea 100%)',
-    light: 'linear-gradient(135deg, rgba(98, 0, 234, 0.05) 0%, rgba(187, 134, 252, 0.05) 100%)',
-    card: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)',
-    glow: 'radial-gradient(circle at 50% 50%, rgba(98, 0, 234, 0.15), transparent 70%)'
-  }), []);
-  
-  // Animaciones optimizadas - valores reducidos para mejor rendimiento
-  const containerVariants = useMemo(() => ({
-    hidden: { opacity: 0 },
-    visible: { 
-      opacity: 1, 
-      transition: { 
-        staggerChildren: 0.05, // Reducido de 0.08
-        delayChildren: 0.05    // Reducido de 0.1
-      } 
-    }
-  }), []);
-  
-  const itemVariants = useMemo(() => ({
-    hidden: { opacity: 0, y: 10 }, // Reducido de 15
-    visible: { 
-      opacity: 1, 
-      y: 0,
-      transition: { 
-        type: 'spring',
-        stiffness: 100, 
-        damping: 15,
-        duration: 0.2 // Más rápido
-      } 
-    }
-  }), []);
-  
-  // Optimización: Usar ResizeObserver para detectar cambios en el tamaño del contenedor
-  useEffect(() => {
-    if (!horizontalScrollRef.current || displayMode !== "horizontal") return;
-    
-    const scrollContainer = horizontalScrollRef.current;
-    const resizeObserver = new ResizeObserver(() => {
-      // Actualizar scroll al cambiar dimensiones
-      if (selectedCategoryRef.current && !isInitialMountRef.current) {
-        const element = selectedCategoryRef.current;
-        const scrollLeft = element.offsetLeft - scrollContainer.offsetWidth / 2 + element.offsetWidth / 2;
-        scrollContainer.scrollTo({
-          left: scrollLeft,
-          behavior: 'smooth'
-        });
-      }
-    });
-    
-    resizeObserver.observe(scrollContainer);
-    
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, [displayMode]);
-  
-  // Optimización: Separar lógica de scroll para mejor control
-  useEffect(() => {
-    if (isInitialMountRef.current) {
-      isInitialMountRef.current = false;
-      return;
-    }
-    
-    // Evitar scroll innecesario si no ha cambiado la categoría
-    if (previousCategoryRef.current === currentCategory) {
-      return;
-    }
-    
-    // Implementar debounce nativo para el scroll horizontal
-    const scrollTimer = setTimeout(() => {
-      if (selectedCategoryRef.current && horizontalScrollRef.current && displayMode === "horizontal") {
-        const container = horizontalScrollRef.current;
-        const element = selectedCategoryRef.current;
-        
-        // Calcular posición para centrar el elemento con mayor precisión
-        const scrollLeft = element.offsetLeft - container.offsetWidth / 2 + element.offsetWidth / 2;
-        
-        // Animar el scroll con comportamiento nativo
-        container.scrollTo({
-          left: Math.max(0, scrollLeft),
-          behavior: 'smooth'
-        });
-      }
-      
-      // Scroll hacia arriba en móviles cuando cambia la categoría
-      if (isMobile && currentCategory) {
-        window.scrollTo({ 
-          top: 0, 
-          behavior: isMobile ? 'auto' : 'smooth' // Más rápido en móviles
-        });
-      }
-    }, 50); // Pequeño retraso para permitir que el DOM se actualice
-    
-    previousCategoryRef.current = currentCategory;
-    
-    return () => clearTimeout(scrollTimer);
-  }, [currentCategory, displayMode, isMobile]);
-  
-  // Reemplazar la generación de colores para categorías con un método que asegure colores únicos
-  const categoryColors = useMemo(() => {
-    // Paleta de colores ampliada y variada para categorías (colores más distintos)
-    const colorPalette = [
-      '#6200ea', // Morado
-      '#2962ff', // Azul intenso
-      '#00c853', // Verde
-      '#ff6d00', // Naranja
-      '#d50000', // Rojo
-      '#aa00ff', // Púrpura
-      '#0091ea', // Azul
-      '#00bfa5', // Turquesa
-      '#ffab00', // Ámbar
-      '#ff4081', // Rosa
-      '#ff9100', // Naranja intenso
-      '#00b8d4', // Cian
-      '#64dd17', // Lima
-      '#304ffe', // Índigo
-      '#c51162', // Fucsia
+  const categoryColor = useMemo(() => {
+    // Paleta de colores más sofisticada y armoniosa
+    const colors = [
+      '#FF6B6B', // coral
+      '#4ECDC4', // turquesa
+      '#45B7D1', // azul cielo
+      '#96CEB4', // verde menta
+      '#FFD93D', // amarillo dorado
+      '#FF8066', // salmón
+      '#6C5CE7', // púrpura
+      '#A8E6CF', // verde agua
+      '#FF9A8B', // melocotón
+      '#B8F2E6'  // menta claro
     ];
     
-    // Función para generar colores aleatorios si necesitamos más
-    const generateRandomColor = () => {
-      const hue = Math.floor(Math.random() * 360);
-      return `hsl(${hue}, 80%, 50%)`;
-    };
-    
-    // Generar un mapa de colores únicos para cada categoría
-    const colorMap = {};
-    
-    // Asignar "Todas" al color original
-    colorMap['all'] = accentColor;
-    
-    // Crear una copia de la paleta para que podamos eliminar colores ya usados
-    const availableColors = [...colorPalette];
-    
-    // Asignar un color único a cada categoría
-    orderedCategories.forEach((category) => {
-      if (availableColors.length > 0) {
-        // Tomar un color aleatorio de los disponibles
-        const randomIndex = Math.floor(Math.random() * availableColors.length);
-        const selectedColor = availableColors[randomIndex];
-        
-        // Eliminar el color seleccionado para no volver a usarlo
-        availableColors.splice(randomIndex, 1);
-        
-        colorMap[category.name] = selectedColor;
-      } else {
-        // Si nos quedamos sin colores, generar uno aleatorio
-        colorMap[category.name] = generateRandomColor();
-      }
-    });
-    
-    return colorMap;
-  }, [orderedCategories, accentColor]);
+    return colors[category.id % colors.length];
+  }, [category.id]);
 
-  // Función para obtener el gradiente basado en el color de la categoría
-  const getCategoryGradient = useCallback((categoryName, type = 'primary') => {
-    const baseColor = categoryName ? categoryColors[categoryName] : categoryColors['all'];
-    
-    // Si el color no existe, usar el color de acento por defecto
-    const color = baseColor || accentColor;
-    
-    switch(type) {
-      case 'primary':
-        return `linear-gradient(135deg, ${color} 0%, ${alpha(color, 0.8)} 100%)`;
-      case 'selected':
-        return `linear-gradient(135deg, ${color} 0%, ${alpha(color, 0.7)} 100%)`;
-      case 'hover':
-        return `linear-gradient(135deg, ${alpha(color, 0.9)} 0%, ${color} 100%)`;
-      case 'light':
-        return `linear-gradient(135deg, ${alpha(color, 0.05)} 0%, ${alpha(color, 0.05)} 100%)`;
-      default:
-        return `linear-gradient(135deg, ${color} 0%, ${alpha(color, 0.8)} 100%)`;
-    }
-  }, [categoryColors, accentColor]);
-  
-  // Optimización: Mostrar esqueleto mejorado durante carga
-  if (loading) {
-    return (
-      <Box sx={{ 
-        mb: 4,
-        position: 'relative',
-        overflow: 'hidden',
-        borderRadius: 2,
-      }}>
-        <Typography variant="h6" component="h2" sx={{ 
-          mb: 2, 
-          fontWeight: 'bold',
-          opacity: 0.7
-        }}>
-          Categorías
-        </Typography>
-        
-        {displayMode === "horizontal" ? (
-          <Stack 
-            direction="row" 
-            spacing={1}
-            sx={{ 
-              overflowX: 'hidden',
-              pb: 1,
-              pt: 1
-            }}
-          >
-            {[...Array(5)].map((_, i) => (
-              <Box 
-                key={`skeleton-${i}`}
-                sx={{ 
-                  width: 70 + Math.random() * 30,
-                  height: 32,
-                  borderRadius: 4,
-                  background: 'rgba(0,0,0,0.05)',
-                  animation: `pulse 1.5s infinite ease-in-out ${i * 0.1}s`,
-                  '@keyframes pulse': {
-                    '0%': { opacity: 0.5 },
-                    '50%': { opacity: 0.8 },
-                    '100%': { opacity: 0.5 }
-                  }
-                }} 
-              />
-            ))}
-          </Stack>
-        ) : (
-          <Box sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 1,
-          }}>
-            {[...Array(6)].map((_, i) => (
-              <Box 
-                key={`skeleton-${i}`}
-                sx={{ 
-                  height: 32,
-                  borderRadius: 1,
-                  background: 'rgba(0,0,0,0.05)',
-                  animation: `pulse 1.5s infinite ease-in-out ${i * 0.1}s`,
-                  '@keyframes pulse': {
-                    '0%': { opacity: 0.5 },
-                    '50%': { opacity: 0.8 },
-                    '100%': { opacity: 0.5 }
-                  }
-                }} 
-              />
-            ))}
-          </Box>
-        )}
-      </Box>
-    );
-  }
-  
-  // Optimización: Mensaje de error con mejor presentación visual
-  if (error) {
-    return (
-      <Box sx={{ 
-        mb: 4, 
-        p: 2, 
-        borderRadius: 2, 
-        bgcolor: alpha(accentColor, 0.1),
-        border: `1px solid ${alpha(accentColor, 0.2)}`,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 1
-      }}>
-        <Box 
-          component="span" 
-          sx={{ 
-            width: 6, 
-            height: 6, 
-            borderRadius: '50%', 
-            bgcolor: 'error.main',
-            animation: 'blink 1.5s infinite',
-            '@keyframes blink': {
-              '0%': { opacity: 1 },
-              '50%': { opacity: 0.4 },
-              '100%': { opacity: 1 }
-            }
-          }} 
-        />
-        <Typography variant="subtitle2" sx={{ color: accentColor, fontSize: '0.85rem' }}>
-          No se pudieron cargar las categorías
-        </Typography>
-      </Box>
-    );
-  }
-  
-  if (categories.length === 0) {
-    return (
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h6" component="h2" sx={{ mb: 2, fontWeight: 'bold' }}>
-          Categorías
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          No hay categorías disponibles
-        </Typography>
-      </Box>
-    );
-  }
-
-  if (displayMode === "horizontal") {
-    return (
+  return (
+    <motion.div
+      whileHover={{ x: 4, scale: 1.01 }}
+      whileTap={{ scale: 0.98 }}
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      transition={{ duration: 0.2 }}
+    >
       <Box
-        component={motion.div}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        sx={{ 
-          mb: 2,
-          position: 'relative',
-          '&::after': {
-            content: '""',
-            position: 'absolute',
-            right: 0,
-            top: 0,
-            height: '100%',
-            width: '30px',
-            background: 'linear-gradient(to right, transparent, #fff)',
-            pointerEvents: 'none',
-            zIndex: 2
-          },
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            left: 0,
-            top: 0,
-            height: '100%',
-            width: '10px',
-            background: 'linear-gradient(to left, transparent, #fff)',
-            pointerEvents: 'none',
-            zIndex: 2
+        onClick={() => onClick(category)}
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          p: { xs: 1.2, md: 1.5 },
+          mx: { xs: 0.5, md: 1 },
+          my: 0.5,
+          borderRadius: '12px',
+          cursor: 'pointer',
+          backgroundColor: isSelected ? `${categoryColor}14` : 'transparent',
+          transition: 'all 0.2s ease',
+          border: '1px solid',
+          borderColor: isSelected ? `${categoryColor}30` : 'transparent',
+          boxShadow: isSelected ? `0 0 10px ${categoryColor}14` : 'none',
+          '&:hover': {
+            backgroundColor: isSelected 
+              ? `${categoryColor}1f`
+              : `${categoryColor}0a`,
+            transform: 'translateX(4px)',
           }
         }}
       >
-        <Box sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'space-between',
-          mb: 0.5,
-          py: 0.8,
-          px: 1.5,
-          borderRadius: '10px 10px 0 0',
-          background: gradients.light,
-          borderTop: `2px solid ${accentColor}`
-        }}>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <LabelIcon sx={{ color: accentColor, mr: 0.8, fontSize: '0.85rem' }} />
-            <Typography 
-              variant="body2" 
-              component="h3" 
-              sx={{ 
-                fontWeight: 'bold',
-                color: alpha(accentColor, 0.9),
-                fontSize: '0.85rem'
-              }}
-            >
-              Filtrar por categoría
-            </Typography>
-          </Box>
-          
-          <Typography 
-            variant="caption" 
-            sx={{ 
-              color: alpha(accentColor, 0.6),
-              fontSize: '0.7rem'
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <Box
+            sx={{
+              width: { xs: 6, md: 8 },
+              height: { xs: 6, md: 8 },
+              borderRadius: '50%',
+              backgroundColor: categoryColor,
+              boxShadow: `0 0 8px ${categoryColor}40`,
+            }}
+          />
+          <Typography
+            variant="body2"
+            sx={{
+              fontWeight: isSelected ? 600 : 500,
+              color: isSelected ? categoryColor : 'text.primary',
+              fontSize: { xs: '0.875rem', md: '0.9rem' },
+              letterSpacing: '0.01em',
+              transition: 'all 0.2s ease',
             }}
           >
-            {categories.length} categorías
+            {category.name}
           </Typography>
         </Box>
-        
-        <Stack 
-          ref={horizontalScrollRef}
-          direction="row" 
-          spacing={1} 
-          component={motion.div}
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          sx={{ 
-            flexWrap: 'nowrap', 
-            pb: 1.2,
-            pt: 1,
-            px: 1.5,
-            overflowX: 'auto',
-            minWidth: '100%',
-            scrollBehavior: 'smooth',
-            scrollPaddingLeft: '8px',
-            scrollbarWidth: 'thin',
-            borderRadius: '0 0 10px 10px',
-            background: alpha(accentColor, 0.02),
-            borderTop: `1px solid ${alpha(accentColor, 0.1)}`,
-            '&::-webkit-scrollbar': {
-              height: '3px',
-            },
-            '&::-webkit-scrollbar-thumb': {
-              backgroundColor: alpha(accentColor, 0.2),
-              borderRadius: '4px',
-            },
-            '& > *': { flexShrink: 0 }
-          }}
-          onScroll={(e) => {
-            // Opcional: evento de scroll para analítica
-            // Implementar throttle para evitar llamadas excesivas
+        <Box
+          sx={{
+            px: { xs: 0.8, md: 1 },
+            py: { xs: 0.3, md: 0.5 },
+            borderRadius: '8px',
+            fontSize: { xs: '0.7rem', md: '0.75rem' },
+            fontWeight: 500,
+            color: isSelected ? categoryColor : 'text.secondary',
+            backgroundColor: isSelected 
+              ? `${categoryColor}14`
+              : theme.palette.action.hover,
+            border: '1px solid',
+            borderColor: isSelected ? `${categoryColor}30` : 'transparent',
+            minWidth: '24px',
+            textAlign: 'center',
+            transition: 'all 0.2s ease',
           }}
         >
-          <motion.div
-            variants={itemVariants}
-            whileHover={{ y: -2, transition: { duration: 0.1 } }}
-            whileTap={{ scale: 0.95, transition: { duration: 0.1 } }}
-          >
-            <Chip
-              ref={!currentCategory ? selectedCategoryRef : null}
-              label={
-                <Box sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  fontWeight: 'medium',
-                  fontSize: '0.75rem'
-                }}>
-                  <span>Todas</span>
-                </Box>
-              }
-              clickable
-              onClick={() => handleCategoryClick('')}
-              sx={{ 
-                borderRadius: '16px',
-                py: 0.5,
-                height: 'auto',
-                minWidth: '60px',
-                bgcolor: categoryColors['all'] || accentColor,
-                color: 'white',
-                boxShadow: !currentCategory 
-                  ? `0 2px 6px ${alpha(accentColor, 0.5)}` 
-                  : 'none',
-                opacity: !currentCategory ? 1 : 0.75,
-                border: 'none',
-                transition: 'all 0.2s ease-out',
-                '&:hover': {
-                  bgcolor: categoryColors['all'] || accentColor,
-                  opacity: 0.9,
+          {category.count}
+        </Box>
+      </Box>
+    </motion.div>
+  );
+};
+
+export default function Categories({ displayMode = "vertical" }) {
+  const theme = useTheme();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const categoryFilter = searchParams.get('category') || '';
+  
+  // Actualizar el estado inicial basado en la URL
+  const [selectedCategory, setSelectedCategory] = useState(() => {
+    return categoryFilter ? { slug: categoryFilter } : null;
+  });
+
+  const { data: categories = [], isLoading } = useCategories();
+
+  const handleCategoryClick = useCallback((category) => {
+    // Si la categoría ya está seleccionada, la deseleccionamos
+    if (selectedCategory?.slug === category.slug) {
+      setSelectedCategory(null);
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete('category');
+      params.delete('page'); // Resetear la página al cambiar de categoría
+      router.push(`?${params.toString()}`);
+      return;
+    }
+
+    // Seleccionar nueva categoría
+    setSelectedCategory(category);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('category', category.slug);
+    params.delete('page'); // Resetear la página al cambiar de categoría
+    router.push(`?${params.toString()}`);
+  }, [router, searchParams, selectedCategory]);
+
+  // Sincronizar el estado con los cambios en la URL
+  useEffect(() => {
+    if (!categoryFilter) {
+      setSelectedCategory(null);
+    } else if ((!selectedCategory || selectedCategory.slug !== categoryFilter) && categories.length > 0) {
+      const category = categories.find(cat => cat.slug === categoryFilter);
+      if (category) {
+        setSelectedCategory(category);
+      }
+    }
+  }, [categoryFilter, categories, selectedCategory]);
+
+  // Actualizar containerStyles
+  const containerStyles = useMemo(() => ({
+    width: '100%',
+    height: {
+      xs: '80px', // Aumentamos un poco la altura en móvil
+      md: displayMode === 'vertical' ? '300px' : '80px',
+    },
+    borderRadius: '12px',
+    border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+    backgroundColor: theme.palette.background.paper,
+    overflow: 'hidden',
+  }), [theme, displayMode]);
+
+  // Estilos para el scroll
+  const scrollStyles = useMemo(() => ({
+    height: '100%',
+    display: {
+      xs: 'flex', // Flex para scroll horizontal en móviles
+      md: 'block', // Block normal para desktop
+    },
+    overflowY: {
+      xs: 'hidden',
+      md: displayMode === 'vertical' ? 'auto' : 'hidden',
+    },
+    overflowX: {
+      xs: 'auto',
+      md: displayMode === 'horizontal' ? 'auto' : 'hidden',
+    },
+    '::-webkit-scrollbar': {
+      width: '4px',
+      height: '4px',
+    },
+    '::-webkit-scrollbar-track': {
+      background: 'transparent',
+    },
+    '::-webkit-scrollbar-thumb': {
+      background: alpha(theme.palette.primary.main, 0.2),
+      borderRadius: '4px',
+      '&:hover': {
+        background: alpha(theme.palette.primary.main, 0.3),
+      },
+    },
+  }), [theme, displayMode]);
+
+  if (isLoading) {
+    return (
+      <Box sx={containerStyles}>
+        <Box sx={{ p: 2 }}>
+          {[...Array(5)].map((_, i) => (
+            <Box
+              key={i}
+              sx={{
+                height: '40px',
+                mb: 1,
+                borderRadius: '8px',
+                background: `linear-gradient(90deg, ${alpha(theme.palette.background.paper, 0.05)} 0%, ${alpha(theme.palette.background.paper, 0.1)} 50%, ${alpha(theme.palette.background.paper, 0.05)} 100%)`,
+                animation: 'pulse 1.5s infinite',
+                '@keyframes pulse': {
+                  '0%': { opacity: 0.6 },
+                  '50%': { opacity: 0.8 },
+                  '100%': { opacity: 0.6 }
                 }
               }}
             />
-          </motion.div>
-          
-          {orderedCategories.map((category, index) => {
-            const isSelected = isCategorySelected(category);
-            return (
-              <motion.div
-                key={category.name}
-                variants={itemVariants}
-                custom={index}
-                whileHover={{ y: -2, transition: { duration: 0.1 } }}
-                whileTap={{ scale: 0.95, transition: { duration: 0.1 } }}
-              >
-                <Chip
-                  ref={isSelected ? selectedCategoryRef : null}
-                  data-category={category.name}
-                  label={
-                    <Box sx={{ 
-                      display: 'flex', 
-                      flexDirection: isMobile ? 'row' : 'column', 
-                      alignItems: 'center', 
-                      fontWeight: 'medium',
-                      fontSize: '0.75rem'
-                    }}>
-                      <span>{category.name}</span>
-                      <Box 
-                        component="span" 
-                        sx={{ 
-                          fontSize: '0.65rem', 
-                          opacity: 0.8,
-                          mt: isMobile ? 0 : 0.1,
-                          ml: isMobile ? 0.5 : 0,
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
-                        }}
-                      >
-                        {isMobile ? `(${category.count})` : category.count}
-                      </Box>
-                    </Box>
-                  }
-                  clickable
-                  onClick={() => handleCategoryClick(category.name)}
-                  sx={{ 
-                    borderRadius: '16px',
-                    py: 0.5,
-                    height: 'auto',
-                    minWidth: isMobile ? '50px' : '70px',
-                    bgcolor: categoryColors[category.name] || accentColor,
-                    color: 'white',
-                    boxShadow: isSelected 
-                      ? `0 2px 6px ${alpha(categoryColors[category.name] || accentColor, 0.5)}` 
-                      : 'none',
-                    opacity: isSelected ? 1 : 0.75,
-                    border: 'none',
-                    transition: 'all 0.2s ease-out',
-                    '&:hover': {
-                      bgcolor: categoryColors[category.name] || accentColor,
-                      opacity: 0.9,
-                    }
-                  }}
-                />
-              </motion.div>
-            );
-          })}
-        </Stack>
+          ))}
+        </Box>
       </Box>
     );
   }
 
-  // Vista vertical con optimizaciones
   return (
-    <Box 
-      component={motion.div}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
-      sx={{ 
-        mb: 3,
-        position: 'relative',
-        maxHeight: '320px',
-      }}
-    >
-      <Box sx={{ 
-        mb: 1, 
-        display: 'flex', 
-        alignItems: 'center',
-        justifyContent: 'space-between'
-      }}>
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <Box 
-            sx={{ 
-              mr: 1, 
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 24,
-              height: 24,
-              borderRadius: '6px',
-              background: gradients.primary,
-            }}
-          >
-            <CategoryIcon sx={{ color: 'white', fontSize: '0.9rem' }} />
-          </Box>
-          
-          <Typography 
-            variant="subtitle1" 
-            component="h2"
-            sx={{ 
-              fontWeight: 'bold',
-              fontSize: '0.95rem',
-              color: alpha(accentColor, 0.9)
-            }}
-          >
-            Explorar Categorías
-          </Typography>
-        </Box>
-        
-        <Typography 
-          variant="caption" 
-          sx={{ 
-            color: alpha(accentColor, 0.7),
-            fontSize: '0.7rem',
-            padding: '2px 8px',
-            borderRadius: '10px',
-            background: alpha(accentColor, 0.06),
-            border: `1px solid ${alpha(accentColor, 0.1)}`
-          }}
-        >
-          {categories.length}
-        </Typography>
-      </Box>
-      
-      <List 
-        component={motion.ul}
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
+    <Box sx={{ width: '100%' }}>
+      {/* Encabezado */}
+      <Box 
         sx={{ 
-          background: gradients.light,
-          borderRadius: '10px',
-          overflow: 'hidden',
-          border: `1px solid ${alpha(accentColor, 0.1)}`,
-          position: 'relative',
-          maxHeight: '260px', 
-          overflowY: 'auto',
-          scrollbarWidth: 'thin',
-          scrollbarColor: `${alpha(accentColor, 0.2)} transparent`,
-          '&::-webkit-scrollbar': {
-            width: '4px',
-          },
-          '&::-webkit-scrollbar-thumb': {
-            backgroundColor: alpha(accentColor, 0.2),
-            borderRadius: '4px',
-          }
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 1,
+          mb: 2,
+          px: 1
         }}
       >
-        <motion.div variants={itemVariants}>
-          <ListItem
-            disablePadding
-            sx={{ 
-              py: 0.2, 
-              borderBottom: `1px solid ${alpha(accentColor, 0.1)}`,
-              background: !currentCategory ? alpha(accentColor, 0.05) : 'transparent'
-            }}
-          >
-            <ListItemButton
-              selected={!currentCategory}
-              onClick={() => handleCategoryClick('')}
-              sx={{
-                py: 0.8,
-                position: 'relative',
-                overflow: 'hidden',
-                transition: 'all 0.2s ease',
-                borderRadius: '6px',
-                '&::before': !currentCategory ? {
-                  content: '""',
-                  position: 'absolute',
-                  left: 0,
-                  top: 0,
-                  width: '4px',
-                  height: '100%',
-                  background: gradients.primary,
-                  borderRadius: '2px'
-                } : {},
-                '&.Mui-selected': {
-                  color: accentColor,
-                  fontWeight: 'bold',
-                  background: alpha(accentColor, 0.05),
-                  '&:hover': {
-                    background: alpha(accentColor, 0.1),
-                  }
-                }
-              }}
-            >
-              <ListItemText 
-                primary={
-                  <Box sx={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center',
-                    fontSize: '0.85rem'
-                  }}>
-                    <Typography 
-                      component="span" 
-                      sx={{ 
-                        fontWeight: !currentCategory ? 'bold' : 'normal',
-                        color: !currentCategory ? accentColor : 'inherit',
-                        display: 'flex',
-                        alignItems: 'center',
-                        fontSize: '0.85rem'
-                      }}
-                    >
-                      Todas
-                    </Typography>
-                    <Badge 
-                      badgeContent={orderedCategories.reduce((acc, cat) => acc + cat.count, 0)} 
-                      color="primary" 
-                      sx={{ 
-                        '& .MuiBadge-badge': { 
-                          background: !currentCategory ? gradients.primary : alpha(accentColor, 0.2),
-                          fontSize: '0.7rem'
-                        } 
-                      }}
-                    />
-                  </Box>
-                }
+        <CategoryIcon sx={{ color: theme.palette.primary.main }} />
+        <Typography variant="subtitle1" fontWeight="600">
+          Categorías
+        </Typography>
+      </Box>
+
+      {/* Contenedor con scroll */}
+      <Box sx={containerStyles}>
+        <Box sx={scrollStyles}>
+          <AnimatePresence>
+            {categories.map((category) => (
+              <CategoryItem
+                key={category.id}
+                category={category}
+                isSelected={selectedCategory?.slug === category.slug}
+                onClick={handleCategoryClick}
               />
-            </ListItemButton>
-          </ListItem>
-        </motion.div>
-        
-        {orderedCategories.map((category, index) => {
-          const isSelected = isCategorySelected(category);
-          return (
-            <motion.div key={category.name} variants={itemVariants} custom={index}>
-              <ListItem
-                disablePadding
-                sx={{ 
-                  py: 0.2, 
-                  borderBottom: index < orderedCategories.length - 1 ? `1px solid ${alpha(accentColor, 0.1)}` : 'none',
-                  background: isSelected ? alpha(accentColor, 0.05) : 'transparent',
-                  transition: 'background 0.2s ease-out'
-                }}
-              >
-                <ListItemButton
-                  selected={isSelected}
-                  onClick={() => handleCategoryClick(category.name)}
-                  sx={{
-                    py: 0.8,
-                    position: 'relative',
-                    overflow: 'hidden',
-                    transition: 'all 0.2s ease',
-                    borderRadius: '6px',
-                    '&::before': isSelected ? {
-                      content: '""',
-                      position: 'absolute',
-                      left: 0,
-                      top: 0,
-                      width: '4px',
-                      height: '100%',
-                      background: getCategoryGradient(category.name, 'primary'),
-                      borderRadius: '2px'
-                    } : {},
-                    '&.Mui-selected': {
-                      color: categoryColors[category.name] || accentColor,
-                      fontWeight: 'bold',
-                      background: alpha(categoryColors[category.name] || accentColor, 0.05),
-                      '&:hover': {
-                        background: alpha(categoryColors[category.name] || accentColor, 0.1),
-                      }
-                    }
-                  }}
-                >
-                  <ListItemText 
-                    primary={
-                      <Box sx={{ 
-                        display: 'flex', 
-                        justifyContent: 'space-between', 
-                        alignItems: 'center' 
-                      }}>
-                        <Typography 
-                          component="span" 
-                          sx={{ 
-                            fontWeight: isSelected ? 'bold' : 'normal',
-                            color: isSelected ? categoryColors[category.name] || accentColor : 'inherit',
-                            fontSize: '0.85rem'
-                          }}
-                        >
-                          {category.name}
-                        </Typography>
-                        <Badge 
-                          badgeContent={category.count} 
-                          color={isSelected ? "primary" : "default"} 
-                          sx={{ 
-                            '& .MuiBadge-badge': { 
-                              background: isSelected ? getCategoryGradient(category.name, 'primary') : alpha(categoryColors[category.name] || accentColor, 0.2),
-                              fontSize: '0.7rem'
-                            } 
-                          }}
-                        />
-                      </Box>
-                    }
-                  />
-                </ListItemButton>
-              </ListItem>
-            </motion.div>
-          );
-        })}
-      </List>
+            ))}
+          </AnimatePresence>
+        </Box>
+      </Box>
     </Box>
   );
 } 

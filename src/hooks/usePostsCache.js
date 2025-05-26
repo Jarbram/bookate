@@ -175,12 +175,17 @@ export default function usePostsCache() {
   const filterPostsBySearch = useCallback((searchQuery, posts = allPosts) => {
     if (!searchQuery) return posts;
     
-    const searchTermLower = searchQuery.toLowerCase();
+    const searchTerms = searchQuery.toLowerCase().split(' ').filter(term => term.length > 0);
+    
     return posts.filter(post => {
-      const titleMatch = post.title && post.title.toLowerCase().includes(searchTermLower);
-      const descriptionMatch = post.description && post.description.toLowerCase().includes(searchTermLower);
-      const contentMatch = post.content && post.content.toLowerCase().includes(searchTermLower);
-      return titleMatch || descriptionMatch || contentMatch;
+      const searchableText = [
+        post.title || '',
+        post.excerpt || '',
+        ...(Array.isArray(post.categories) ? post.categories : []),
+        ...(Array.isArray(post.tags) ? post.tags : [])
+      ].join(' ').toLowerCase();
+
+      return searchTerms.every(term => searchableText.includes(term));
     });
   }, [allPosts]);
   
