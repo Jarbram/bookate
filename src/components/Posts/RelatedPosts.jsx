@@ -13,6 +13,17 @@ import PostCard from './PostCard';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
+// Constantes de diseño
+const THEME = {
+  primary: '#36314c',     // Color principal
+  secondary: '#7182bb',   // Color secundario
+  accent: '#ded1e7',      // Color de acento
+  background: '#FFFFFF',  // Fondo
+  typography: {
+    fontFamily: 'League Spartan, sans-serif',
+  }
+};
+
 export default function RelatedPosts({ currentPostId, categories = [], tags = [], limit = 3 }) {
   const [relatedPosts, setRelatedPosts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -119,7 +130,18 @@ export default function RelatedPosts({ currentPostId, categories = [], tags = []
   
   if (error) {
     return (
-      <Alert severity="error" sx={{ mt: 2, mb: 2 }}>
+      <Alert 
+        severity="error" 
+        sx={{ 
+          mt: 2, 
+          mb: 2,
+          backgroundColor: alpha(THEME.accent, 0.2),
+          color: THEME.primary,
+          '& .MuiAlert-icon': {
+            color: THEME.secondary
+          }
+        }}
+      >
         {error}
       </Alert>
     );
@@ -129,8 +151,13 @@ export default function RelatedPosts({ currentPostId, categories = [], tags = []
     return (
       <Typography 
         variant="body1" 
-        color="text.secondary" 
-        sx={{ py: 2, textAlign: 'center', fontStyle: 'italic' }}
+        sx={{ 
+          py: 2, 
+          textAlign: 'center', 
+          fontStyle: 'italic',
+          color: alpha(THEME.primary, 0.7),
+          fontFamily: THEME.typography.fontFamily
+        }}
       >
         No encontramos artículos relacionados con este tema.
       </Typography>
@@ -154,11 +181,11 @@ export default function RelatedPosts({ currentPostId, categories = [], tags = []
       },
       '&::before': {
         left: 0,
-        background: 'linear-gradient(to right, rgba(255,255,255,0.9), rgba(255,255,255,0))',
+        background: `linear-gradient(to right, ${THEME.background}, transparent)`,
       },
       '&::after': {
         right: 0,
-        background: 'linear-gradient(to left, rgba(255,255,255,0.9), rgba(255,255,255,0))',
+        background: `linear-gradient(to left, ${THEME.background}, transparent)`,
       }
     }}>
       <Box
@@ -172,14 +199,14 @@ export default function RelatedPosts({ currentPostId, categories = [], tags = []
             height: '8px',
           },
           '&::-webkit-scrollbar-track': {
-            backgroundColor: theme => alpha(theme.palette.primary.main, 0.05),
+            backgroundColor: alpha(THEME.accent, 0.2),
             borderRadius: '10px',
           },
           '&::-webkit-scrollbar-thumb': {
-            backgroundColor: theme => alpha(theme.palette.primary.main, 0.2),
+            backgroundColor: alpha(THEME.secondary, 0.3),
             borderRadius: '10px',
             '&:hover': {
-              backgroundColor: theme => alpha(theme.palette.primary.main, 0.3),
+              backgroundColor: alpha(THEME.secondary, 0.5),
             }
           },
           gap: 3
@@ -194,10 +221,10 @@ export default function RelatedPosts({ currentPostId, categories = [], tags = []
                 width: { xs: '85%', sm: '330px' },
                 height: '380px', 
                 borderRadius: '20px',
-                border: '1px solid rgba(0,0,0,0.08)',
+                border: `1px solid ${alpha(THEME.primary, 0.08)}`,
                 overflow: 'hidden',
-                boxShadow: '0 6px 20px rgba(0,0,0,0.05)',
-                background: 'white',
+                boxShadow: `0 6px 20px ${alpha(THEME.primary, 0.05)}`,
+                background: THEME.background,
                 position: 'relative',
                 transition: 'all 0.3s ease',
                 '&::before': {
@@ -207,7 +234,7 @@ export default function RelatedPosts({ currentPostId, categories = [], tags = []
                   left: 0,
                   right: 0,
                   height: '6px',
-                  background: theme => `linear-gradient(90deg, ${alpha(theme.palette.primary.main, 0.6)}, ${alpha(theme.palette.secondary.main || theme.palette.primary.light, 0.6)})`,
+                  background: `linear-gradient(90deg, ${alpha(THEME.secondary, 0.6)}, ${alpha(THEME.accent, 0.6)})`,
                   borderRadius: '20px 20px 0 0',
                 }
               }}
@@ -215,16 +242,61 @@ export default function RelatedPosts({ currentPostId, categories = [], tags = []
               <Skeleton 
                 variant="rectangular" 
                 width="100%" 
-                height="180px" 
+                height="180px"
+                sx={{
+                  backgroundColor: alpha(THEME.accent, 0.1)
+                }}
               />
               <Box sx={{ p: 3 }}>
-                <Skeleton width="80%" height={32} sx={{ mb: 1.5 }} />
-                <Skeleton width="100%" height={20} sx={{ mb: 0.8 }} />
-                <Skeleton width="90%" height={20} sx={{ mb: 0.8 }} />
-                <Skeleton width="60%" height={20} sx={{ mb: 1.5 }} />
+                <Skeleton 
+                  width="80%" 
+                  height={32} 
+                  sx={{ 
+                    mb: 1.5,
+                    backgroundColor: alpha(THEME.accent, 0.2)
+                  }} 
+                />
+                <Skeleton 
+                  width="100%" 
+                  height={20} 
+                  sx={{ 
+                    mb: 0.8,
+                    backgroundColor: alpha(THEME.accent, 0.15)
+                  }} 
+                />
+                <Skeleton 
+                  width="90%" 
+                  height={20} 
+                  sx={{ 
+                    mb: 0.8,
+                    backgroundColor: alpha(THEME.accent, 0.15)
+                  }} 
+                />
+                <Skeleton 
+                  width="60%" 
+                  height={20} 
+                  sx={{ 
+                    mb: 1.5,
+                    backgroundColor: alpha(THEME.accent, 0.15)
+                  }} 
+                />
                 <Box sx={{ mt: 2, display: 'flex', gap: 1.5 }}>
-                  <Skeleton width={70} height={26} sx={{ borderRadius: '20px' }} />
-                  <Skeleton width={90} height={26} sx={{ borderRadius: '20px' }} />
+                  <Skeleton 
+                    width={70} 
+                    height={26} 
+                    sx={{ 
+                      borderRadius: '20px',
+                      backgroundColor: alpha(THEME.accent, 0.2)
+                    }} 
+                  />
+                  <Skeleton 
+                    width={90} 
+                    height={26} 
+                    sx={{ 
+                      borderRadius: '20px',
+                      backgroundColor: alpha(THEME.accent, 0.2)
+                    }} 
+                  />
                 </Box>
               </Box>
             </Box>
@@ -247,10 +319,12 @@ export default function RelatedPosts({ currentPostId, categories = [], tags = []
                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                   position: 'relative',
                   overflow: 'hidden',
-                  boxShadow: '0 8px 20px rgba(0,0,0,0.07)',
+                  boxShadow: `0 8px 20px ${alpha(THEME.primary, 0.07)}`,
+                  border: `1px solid ${alpha(THEME.primary, 0.05)}`,
                   '&:hover': {
                     transform: 'translateY(-8px)',
-                    boxShadow: '0 16px 25px rgba(0,0,0,0.12)',
+                    boxShadow: `0 16px 25px ${alpha(THEME.primary, 0.12)}`,
+                    borderColor: alpha(THEME.secondary, 0.2),
                     '& .post-gradient': {
                       opacity: 0.8,
                     }
@@ -262,7 +336,7 @@ export default function RelatedPosts({ currentPostId, categories = [], tags = []
                     left: 0,
                     right: 0,
                     height: '6px',
-                    background: theme => `linear-gradient(90deg, ${alpha(theme.palette.primary.main, 0.6)}, ${alpha(theme.palette.secondary.main || theme.palette.primary.light, 0.6)})`,
+                    background: `linear-gradient(90deg, ${THEME.secondary}, ${THEME.accent})`,
                     borderRadius: '20px 20px 0 0',
                     zIndex: 1,
                   }
@@ -277,7 +351,7 @@ export default function RelatedPosts({ currentPostId, categories = [], tags = []
                     left: 0, 
                     right: 0, 
                     bottom: 0, 
-                    background: theme => `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)} 0%, transparent 100%)`,
+                    background: `linear-gradient(135deg, ${alpha(THEME.secondary, 0.1)} 0%, transparent 100%)`,
                     opacity: 0.2,
                     transition: 'opacity 0.3s ease',
                     zIndex: 0,

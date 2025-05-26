@@ -24,8 +24,16 @@ export default function InstagramGallery({ compact = false }) {
   const iframeRef = useRef(null);
   const inView = useInView(containerRef, { once: true, amount: 0.2 });
   
-  // Colores y estilos
-  const bgGradient = 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)';
+  // Actualización de colores y estilos
+  const colors = {
+    background: '#FFFFFF',
+    text: '#36314c',
+    primary: '#7182bb',
+    secondary: '#ded1e7',
+  };
+
+  // Nuevo gradiente que incorpora los colores de la marca
+  const bgGradient = `linear-gradient(45deg, ${colors.primary} 0%, ${colors.secondary} 100%)`;
   const instagramUser = 'booke_ate';
   
   // Carga de iframe optimizada con IntersectionObserver
@@ -77,11 +85,12 @@ export default function InstagramGallery({ compact = false }) {
         position: 'relative',
         borderRadius: '12px',
         overflow: 'hidden',
-        boxShadow: '0 6px 20px rgba(0,0,0,0.06)',
+        backgroundColor: colors.background,
+        boxShadow: `0 6px 20px ${alpha(colors.primary, 0.1)}`,
         transition: 'all 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
         '&:hover': {
           transform: 'translateY(-3px)',
-          boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
+          boxShadow: `0 10px 30px ${alpha(colors.primary, 0.15)}`,
         },
         height: compact ? 'auto' : 'auto',
       }}
@@ -90,7 +99,7 @@ export default function InstagramGallery({ compact = false }) {
       animate={inView ? { y: 0, opacity: 1 } : { y: 15, opacity: 0 }}
       transition={{ duration: 0.4, ease: 'easeOut' }}
     >
-      {/* Barra de título con diseño mejorado */}
+      {/* Barra de título actualizada */}
       <Box sx={{ 
         display: 'flex',
         alignItems: 'center',
@@ -106,7 +115,7 @@ export default function InstagramGallery({ compact = false }) {
           left: 0,
           right: 0,
           bottom: 0,
-          background: 'radial-gradient(circle at top right, rgba(255,255,255,0.2), rgba(255,255,255,0) 70%)',
+          background: `radial-gradient(circle at top right, ${alpha(colors.secondary, 0.3)}, transparent 70%)`,
           zIndex: 1
         }
       }}>
@@ -119,7 +128,7 @@ export default function InstagramGallery({ compact = false }) {
             variant="h6"
             sx={{ 
               fontWeight: 700, 
-              color: 'white',
+              color: colors.background,
               fontSize: '1rem',
               display: 'flex',
               alignItems: 'center',
@@ -151,7 +160,7 @@ export default function InstagramGallery({ compact = false }) {
               display: 'flex', 
               alignItems: 'center',
               textDecoration: 'none',
-              color: 'white',
+              color: colors.background,
               fontSize: '0.8rem',
               fontWeight: 600,
               transition: 'all 0.25s ease',
@@ -177,16 +186,16 @@ export default function InstagramGallery({ compact = false }) {
         </motion.div>
       </Box>
       
-      {/* Área de contenido con altura adaptable */}
+      {/* Área de contenido actualizada */}
       <Box sx={{ 
         position: 'relative', 
         height: compact ? 340 : 380, 
-        backgroundColor: '#fafafa',
+        backgroundColor: colors.background,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center'
       }}>
-        {/* Estado de carga mejorado */}
+        {/* Estado de carga actualizado */}
         {loading && (
           <Box sx={{ 
             position: 'absolute', 
@@ -198,7 +207,7 @@ export default function InstagramGallery({ compact = false }) {
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: '#fafafa',
+            backgroundColor: colors.background,
             zIndex: 10
           }}>
             <motion.div
@@ -214,13 +223,13 @@ export default function InstagramGallery({ compact = false }) {
               <Box sx={{
                 borderRadius: '50%',
                 p: 1.5,
-                background: 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)',
-                boxShadow: '0 4px 15px rgba(225, 48, 108, 0.2)'
+                background: bgGradient,
+                boxShadow: `0 4px 15px ${alpha(colors.primary, 0.2)}`
               }}>
                 <InstagramIcon 
                   sx={{ 
                     fontSize: '2rem', 
-                    color: 'white',
+                    color: colors.background,
                   }} 
                 />
               </Box>
@@ -228,7 +237,7 @@ export default function InstagramGallery({ compact = false }) {
             <Typography 
               variant="body2"
               sx={{ 
-                color: '#555', 
+                color: colors.text,
                 fontWeight: 500,
                 mt: 2,
                 animation: 'pulse 2s infinite ease-in-out',
@@ -244,7 +253,7 @@ export default function InstagramGallery({ compact = false }) {
           </Box>
         )}
         
-        {/* Estado de error mejorado */}
+        {/* Estado de error actualizado */}
         {error && (
           <Box sx={{ 
             position: 'absolute', 
@@ -256,9 +265,10 @@ export default function InstagramGallery({ compact = false }) {
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: '#fafafa',
+            backgroundColor: colors.background,
             zIndex: 10,
-            p: 3
+            p: 3,
+            color: colors.text,
           }}>
             <Box 
               sx={{ 
@@ -266,20 +276,20 @@ export default function InstagramGallery({ compact = false }) {
                 borderRadius: '50%',
                 background: bgGradient,
                 mb: 2,
-                boxShadow: '0 4px 15px rgba(225, 48, 108, 0.15)'
+                boxShadow: `0 4px 15px ${alpha(colors.primary, 0.15)}`
               }}
             >
               <InstagramIcon 
                 sx={{ 
                   fontSize: '1.8rem', 
-                  color: 'white'
+                  color: colors.background
                 }} 
               />
             </Box>
             <Typography 
               variant="body1"
               sx={{ 
-                color: '#333', 
+                color: colors.text, 
                 fontWeight: 600,
                 mb: 1,
                 textAlign: 'center'
@@ -290,7 +300,7 @@ export default function InstagramGallery({ compact = false }) {
             <Typography 
               variant="body2"
               sx={{ 
-                color: '#666', 
+                color: colors.text, 
                 mb: 2.5,
                 textAlign: 'center',
                 maxWidth: '90%'
@@ -306,17 +316,17 @@ export default function InstagramGallery({ compact = false }) {
                 rel="noopener noreferrer"
                 sx={{ 
                   textDecoration: 'none',
-                  color: 'white',
+                  color: colors.background,
                   fontWeight: 500,
                   py: 0.8,
                   px: 2,
                   borderRadius: '8px',
                   background: bgGradient,
                   transition: 'all 0.2s ease',
-                  boxShadow: '0 3px 10px rgba(225, 48, 108, 0.15)',
+                  boxShadow: `0 3px 10px ${alpha(colors.primary, 0.15)}`,
                   '&:hover': {
                     transform: 'translateY(-2px)',
-                    boxShadow: '0 5px 15px rgba(225, 48, 108, 0.25)',
+                    boxShadow: `0 5px 15px ${alpha(colors.primary, 0.25)}`,
                   },
                   '&:active': {
                     transform: 'translateY(0)',
@@ -330,10 +340,10 @@ export default function InstagramGallery({ compact = false }) {
                 onClick={handleRetry}
                 aria-label="Reintentar carga"
                 sx={{ 
-                  color: '#e1306c',
-                  border: `1px solid ${alpha('#e1306c', 0.3)}`,
+                  color: colors.primary,
+                  border: `1px solid ${alpha(colors.primary, 0.3)}`,
                   '&:hover': {
-                    backgroundColor: alpha('#e1306c', 0.08)
+                    backgroundColor: alpha(colors.primary, 0.08)
                   }
                 }}
               >

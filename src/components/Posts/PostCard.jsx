@@ -13,10 +13,22 @@ import Image from 'next/image';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import Link from 'next/link';
 
-// Constantes
+// Nueva definición del tema
 const THEME = {
-  primary: '#6200ea',
-  imageBackground: 'grey.100'
+  background: {
+    primary: '#FFFFFF',
+    secondary: '#ded1e7',
+    accent: '#7182bb',
+    image: '#f5f3f7' // Fondo suave para imágenes
+  },
+  text: {
+    primary: '#36314c',
+    secondary: alpha('#36314c', 0.7),
+  },
+  card: {
+    shadow: '0 8px 24px rgba(54, 49, 76, 0.08)',
+    shadowHover: '0 12px 28px rgba(54, 49, 76, 0.15)'
+  }
 };
 
 export default function PostCard({ post, viewMode = 'grid', onClick, isSelected = false }) {
@@ -25,7 +37,7 @@ export default function PostCard({ post, viewMode = 'grid', onClick, isSelected 
   const [hovering, setHovering] = useState(false);
   
   const isList = viewMode === 'list';
-  
+
   // Memoización de valores derivados
   const formattedDate = useMemo(() => {
     if (!post.publishDate) return '';
@@ -47,17 +59,23 @@ export default function PostCard({ post, viewMode = 'grid', onClick, isSelected 
       : '/images/default-placeholder.jpg';
   }, [post.featuredImage]);
 
-  // Estilos memoizados
+  // Estilos actualizados y memoizados
   const cardStyles = useMemo(() => ({
     height: '100%',
     display: 'flex',
     flexDirection: isList ? 'row' : 'column',
     position: 'relative',
-    transition: 'all 0.3s ease',
+    transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
     transform: isSelected ? 'scale(0.98)' : 'scale(1)',
+    backgroundColor: THEME.background.primary,
+    borderRadius: '12px',
+    overflow: 'hidden',
+    border: `1px solid ${alpha(THEME.background.secondary, 0.3)}`,
+    boxShadow: THEME.card.shadow,
     '&:hover': {
       transform: 'translateY(-4px)',
-      boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
+      boxShadow: THEME.card.shadowHover,
+      borderColor: THEME.background.secondary
     }
   }), [isList, isSelected]);
 
@@ -66,20 +84,38 @@ export default function PostCard({ post, viewMode = 'grid', onClick, isSelected 
     paddingTop: isList ? '0' : '56.25%',
     height: isList ? '200px' : 'auto',
     width: isList ? '200px' : '100%',
-    backgroundColor: THEME.imageBackground,
-  }), [isList]);
+    backgroundColor: THEME.background.image,
+    overflow: 'hidden',
+    '&::after': {
+      content: '""',
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: hovering 
+        ? `linear-gradient(to bottom, transparent 50%, ${alpha(THEME.background.accent, 0.1)})`
+        : 'none',
+      transition: 'all 0.3s ease'
+    }
+  }), [isList, hovering]);
 
   const imageStyles = useMemo(() => ({
     objectFit: 'cover',
-    transition: 'transform 0.3s ease',
+    transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
     transform: hovering ? 'scale(1.05)' : 'scale(1)',
     opacity: imageLoaded ? 1 : 0,
   }), [hovering, imageLoaded]);
 
   const categoryChipStyles = useMemo(() => ({
-    backgroundColor: alpha(THEME.primary, 0.1),
-    color: THEME.primary,
-    fontWeight: 500
+    backgroundColor: alpha(THEME.background.accent, 0.1),
+    color: THEME.background.accent,
+    fontWeight: 600,
+    fontSize: '0.75rem',
+    height: '24px',
+    '&:hover': {
+      backgroundColor: alpha(THEME.background.accent, 0.2),
+    }
   }), []);
 
   return (
@@ -118,20 +154,23 @@ export default function PostCard({ post, viewMode = 'grid', onClick, isSelected 
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: THEME.imageBackground,
+                  backgroundColor: THEME.background.image,
                 }}
               >
-                <Typography variant="body2" color="text.secondary">
+                <Typography 
+                  variant="body2" 
+                  sx={{ color: THEME.text.secondary }}
+                >
                   Error al cargar la imagen
                 </Typography>
               </Box>
             )}
           </Box>
 
-          <CardContent>
+          <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
             {/* Categorías */}
             {categories.length > 0 && (
-              <Box sx={{ mb: 1, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              <Box sx={{ mb: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                 {categories.map((category) => (
                   <Chip
                     key={category}
@@ -148,9 +187,11 @@ export default function PostCard({ post, viewMode = 'grid', onClick, isSelected 
               variant="h6" 
               component="h2"
               sx={{ 
-                mb: 1,
+                mb: 1.5,
                 fontWeight: 700,
                 fontSize: { xs: '1.1rem', sm: '1.25rem' },
+                lineHeight: 1.4,
+                color: THEME.text.primary,
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 display: '-webkit-box',
@@ -164,9 +205,10 @@ export default function PostCard({ post, viewMode = 'grid', onClick, isSelected 
             {/* Extracto */}
             <Typography 
               variant="body2" 
-              color="text.secondary"
               sx={{
-                mb: 2,
+                mb: 2.5,
+                color: THEME.text.secondary,
+                lineHeight: 1.6,
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 display: '-webkit-box',
@@ -181,10 +223,11 @@ export default function PostCard({ post, viewMode = 'grid', onClick, isSelected 
             <Typography 
               variant="caption" 
               sx={{ 
-                color: 'text.secondary',
+                color: THEME.text.secondary,
                 display: 'flex',
                 alignItems: 'center',
-                gap: 1
+                gap: 1,
+                fontSize: '0.8rem'
               }}
             >
               <CalendarTodayIcon sx={{ fontSize: 16 }} />

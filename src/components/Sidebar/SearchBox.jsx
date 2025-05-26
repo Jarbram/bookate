@@ -34,20 +34,20 @@ export default function SearchBox({ darkMode = false }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   
-  // Colores primarios del tema (manteniendo coherencia con el Header)
-  const primaryLight = '#6200ea';
-  const primaryDark = '#bb86fc';
-  const bgColor = darkMode ? '#151515' : '#ffffff';
-  const textColor = darkMode ? '#e0e0e0' : '#1a1a1a';
-  const accentColor = darkMode ? '#bb86fc' : '#6200ea';
+  // Actualización de la paleta de colores
+  const primaryLight = '#7182bb';
+  const primaryDark = '#ded1e7';
+  const bgColor = darkMode ? '#151515' : '#FFFFFF';
+  const textColor = darkMode ? '#e0e0e0' : '#36314c';
+  const accentColor = darkMode ? '#ded1e7' : '#7182bb';
   
-  // Definir gradientes memoizados para mejorar rendimiento
+  // Definir gradientes actualizados
   const gradients = useMemo(() => ({
     primary: `linear-gradient(135deg, ${accentColor} 0%, ${alpha(accentColor, 0.8)} 100%)`,
-    secondary: `linear-gradient(135deg, ${accentColor} 0%, ${alpha(accentColor, 0.6)} 100%)`,
-    glow: `radial-gradient(circle at 50% 50%, ${alpha(accentColor, 0.4)}, transparent 70%)`,
-    shine: `linear-gradient(90deg, transparent, ${alpha(accentColor, 0.2)}, transparent)`,
-    glassmorphism: `linear-gradient(135deg, ${alpha(accentColor, 0.15)} 0%, ${alpha(accentColor, 0.05)} 100%)`
+    secondary: `linear-gradient(135deg, #7182bb 0%, ${alpha('#ded1e7', 0.8)} 100%)`,
+    glow: `radial-gradient(circle at 50% 50%, ${alpha('#7182bb', 0.4)}, transparent 70%)`,
+    shine: `linear-gradient(90deg, transparent, ${alpha('#ded1e7', 0.3)}, transparent)`,
+    glassmorphism: `linear-gradient(135deg, ${alpha('#7182bb', 0.15)} 0%, ${alpha('#ded1e7', 0.05)} 100%)`
   }), [accentColor, darkMode]);
   
   // Animaciones
@@ -246,7 +246,7 @@ export default function SearchBox({ darkMode = false }) {
           transition: 'all 0.2s ease',
           boxShadow: darkMode ? 
             `0 1px 3px ${alpha('#000', 0.2)}` : 
-            `0 1px 3px ${alpha('#6200ea', 0.1)}`,
+            `0 1px 3px ${alpha('#7182bb', 0.1)}`,
           backdropFilter: 'blur(4px)',
           '&:hover': {
             backgroundColor: darkMode ? alpha(primaryDark, 0.15) : alpha(accentColor, 0.08),
@@ -343,7 +343,15 @@ export default function SearchBox({ darkMode = false }) {
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      sx={{ position: 'relative', mb: 3, mt: 2 }}
+      sx={{ 
+        position: 'relative', 
+        mb: 3, 
+        mt: 2,
+        backgroundColor: bgColor,
+        borderRadius: '20px',
+        padding: '16px',
+        boxShadow: `0 4px 20px ${alpha('#ded1e7', 0.15)}`
+      }}
     >
       <Typography
         variant="subtitle1"
@@ -359,6 +367,7 @@ export default function SearchBox({ darkMode = false }) {
           color: textColor,
           display: 'flex',
           alignItems: 'center',
+          letterSpacing: '0.5px'
         }}
       >
         <Box 
@@ -369,12 +378,12 @@ export default function SearchBox({ darkMode = false }) {
             width: 28,
             height: 28,
             borderRadius: '8px',
-            background: gradients.primary,
+            background: gradients.secondary,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             mr: 1.2,
-            boxShadow: `0 3px 6px ${alpha(accentColor, 0.3)}`
+            boxShadow: `0 3px 6px ${alpha('#7182bb', 0.3)}`
           }}
         >
           <SearchIcon sx={{ fontSize: '1rem', color: '#fff' }} />
@@ -387,10 +396,10 @@ export default function SearchBox({ darkMode = false }) {
         onSubmit={handleSearch}
         animate={{ 
           boxShadow: focused ? [
-            `0 4px 15px ${alpha(accentColor, 0.15)}`,
-            `0 4px 20px ${alpha(accentColor, 0.2)}`,
-            `0 4px 15px ${alpha(accentColor, 0.15)}`
-          ] : `0 2px 6px ${alpha(accentColor, 0.1)}`
+            `0 4px 15px ${alpha('#7182bb', 0.15)}`,
+            `0 4px 20px ${alpha('#ded1e7', 0.2)}`,
+            `0 4px 15px ${alpha('#7182bb', 0.15)}`
+          ] : `0 2px 6px ${alpha('#ded1e7', 0.15)}`
         }}
         transition={{ 
           repeat: focused ? Infinity : 0, 
@@ -401,12 +410,12 @@ export default function SearchBox({ darkMode = false }) {
           alignItems: 'center',
           borderRadius: '16px',
           border: `1px solid ${focused 
-            ? darkMode ? alpha(primaryDark, 0.5) : alpha(primaryLight, 0.3)
-            : darkMode ? alpha('#fff', 0.08) : alpha('#000', 0.06)}`,
+            ? alpha('#7182bb', 0.3)
+            : alpha('#ded1e7', 0.3)}`,
           transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           background: focused 
-            ? darkMode ? alpha('#1a1a1a', 0.95) : alpha('#fff', 0.98)
-            : darkMode ? alpha('#1e1e1e', 0.9) : alpha('#f9f9fc', 0.9),
+            ? '#FFFFFF'
+            : alpha('#FFFFFF', 0.9),
           backdropFilter: 'blur(10px)',
           py: focused ? 0.7 : 0.5,
           pl: 1.5,
@@ -421,12 +430,12 @@ export default function SearchBox({ darkMode = false }) {
             left: '10%',
             height: '2px',
             width: '80%',
-            background: gradients.primary,
+            background: gradients.secondary,
             borderRadius: '1px',
             boxShadow: `0 0 8px ${accentColor}`,
           } : {},
           '&:hover': {
-            borderColor: darkMode ? alpha(primaryDark, 0.4) : alpha(primaryLight, 0.25),
+            borderColor: alpha('#7182bb', 0.4),
             transform: 'translateY(-1px)'
           }
         }}

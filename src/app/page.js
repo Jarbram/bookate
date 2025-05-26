@@ -3,9 +3,44 @@ import { Suspense } from 'react';
 import { Container, Typography, Box, Divider, CircularProgress } from '@mui/material';
 import dynamic from 'next/dynamic';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { createTheme, ThemeProvider } from '@mui/material/styles';
 
 // Crear el cliente de Query
 const queryClient = new QueryClient();
+
+// Configuración del tema de MUI con League Spartan
+const theme = createTheme({
+  typography: {
+    fontFamily: [
+      'League Spartan',
+      '-apple-system',
+      'BlinkMacSystemFont',
+      '"Segoe UI"',
+      'Roboto',
+      '"Helvetica Neue"',
+      'Arial',
+      'sans-serif',
+    ].join(','),
+    h1: {
+      fontWeight: 700,
+    },
+    h2: {
+      fontWeight: 700,
+    },
+    h3: {
+      fontWeight: 600,
+    },
+    h4: {
+      fontWeight: 600,
+    },
+    h5: {
+      fontWeight: 600,
+    },
+    h6: {
+      fontWeight: 600,
+    },
+  },
+});
 
 // Importar PostGrid de forma dinámica para evitar problemas de hidratación
 const PostGrid = dynamic(() => import('@/components/Posts/PostGrid'), {
@@ -38,9 +73,11 @@ function LoadingSkeleton() {
 export default function Home() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Suspense fallback={<LoadingSkeleton />}>
-        <HomeContent />
-      </Suspense>
+      <ThemeProvider theme={theme}>
+        <Suspense fallback={<LoadingSkeleton />}>
+          <HomeContent />
+        </Suspense>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }
@@ -51,7 +88,7 @@ function HomeContent() {
     <Box>
       <HeaderComponent />
       
-      <Container maxWidth="lg" sx={{ my: { xs: 4, md: 6 } }}>
+      <Container maxWidth="lg" sx={{ my: { xs: 2, md: 2 } }}>
         {/* Contenido móvil superior */}
         <Box sx={{ display: { xs: 'block', md: 'none' }, mb: 4 }}>
           <MobileSidebarContentComponent 

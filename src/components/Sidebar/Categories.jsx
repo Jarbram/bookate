@@ -10,22 +10,27 @@ const CategoryItem = ({ category, isSelected, onClick }) => {
   const theme = useTheme();
   
   const categoryColor = useMemo(() => {
-    // Paleta de colores más sofisticada y armoniosa
+    // Nueva paleta de colores armoniosa basada en los colores proporcionados
     const colors = [
-      '#FF6B6B', // coral
-      '#4ECDC4', // turquesa
-      '#45B7D1', // azul cielo
-      '#96CEB4', // verde menta
-      '#FFD93D', // amarillo dorado
-      '#FF8066', // salmón
-      '#6C5CE7', // púrpura
-      '#A8E6CF', // verde agua
-      '#FF9A8B', // melocotón
-      '#B8F2E6'  // menta claro
+      '#7182bb', // azul principal
+      '#ded1e7', // lila claro
+      '#8e9ac7', // azul medio
+      '#c5b5d3', // lila medio
+      '#5a6ba8', // azul oscuro
+      '#bba4ce', // lila oscuro
+      '#a3aed4', // azul lavanda
+      '#d1c1df', // lila suave
+      '#647ab3', // azul acero
+      '#cec0e3'  // lila polvo
     ];
     
     return colors[category.id % colors.length];
   }, [category.id]);
+
+  // Función auxiliar para manejar la transparencia
+  const withOpacity = (color, opacity) => {
+    return color + Math.floor(opacity * 255).toString(16).padStart(2, '0');
+  };
 
   return (
     <motion.div
@@ -45,17 +50,19 @@ const CategoryItem = ({ category, isSelected, onClick }) => {
           p: { xs: 1.2, md: 1.5 },
           mx: { xs: 0.5, md: 1 },
           my: 0.5,
-          borderRadius: '12px',
+          borderRadius: '16px', // Aumentado para más suavidad
           cursor: 'pointer',
-          backgroundColor: isSelected ? `${categoryColor}14` : 'transparent',
-          transition: 'all 0.2s ease',
+          backgroundColor: isSelected ? withOpacity(categoryColor, 0.12) : '#FFFFFF',
+          transition: 'all 0.3s ease',
           border: '1px solid',
-          borderColor: isSelected ? `${categoryColor}30` : 'transparent',
-          boxShadow: isSelected ? `0 0 10px ${categoryColor}14` : 'none',
+          borderColor: isSelected ? categoryColor : withOpacity('#ded1e7', 0.3),
+          boxShadow: isSelected 
+            ? `0 2px 8px ${withOpacity(categoryColor, 0.2)}`
+            : '0 1px 3px rgba(54, 49, 76, 0.05)',
           '&:hover': {
             backgroundColor: isSelected 
-              ? `${categoryColor}1f`
-              : `${categoryColor}0a`,
+              ? withOpacity(categoryColor, 0.15)
+              : withOpacity('#ded1e7', 0.1),
             transform: 'translateX(4px)',
           }
         }}
@@ -67,16 +74,16 @@ const CategoryItem = ({ category, isSelected, onClick }) => {
               height: { xs: 6, md: 8 },
               borderRadius: '50%',
               backgroundColor: categoryColor,
-              boxShadow: `0 0 8px ${categoryColor}40`,
+              boxShadow: `0 0 8px ${withOpacity(categoryColor, 0.3)}`,
             }}
           />
           <Typography
             variant="body2"
             sx={{
               fontWeight: isSelected ? 600 : 500,
-              color: isSelected ? categoryColor : 'text.primary',
+              color: '#36314c',
               fontSize: { xs: '0.875rem', md: '0.9rem' },
-              letterSpacing: '0.01em',
+              letterSpacing: '0.02em',
               transition: 'all 0.2s ease',
             }}
           >
@@ -87,18 +94,17 @@ const CategoryItem = ({ category, isSelected, onClick }) => {
           sx={{
             px: { xs: 0.8, md: 1 },
             py: { xs: 0.3, md: 0.5 },
-            borderRadius: '8px',
+            borderRadius: '10px',
             fontSize: { xs: '0.7rem', md: '0.75rem' },
-            fontWeight: 500,
-            color: isSelected ? categoryColor : 'text.secondary',
+            fontWeight: 600,
+            color: isSelected ? '#36314c' : '#36314c99',
             backgroundColor: isSelected 
-              ? `${categoryColor}14`
-              : theme.palette.action.hover,
+              ? withOpacity(categoryColor, 0.12)
+              : withOpacity('#ded1e7', 0.2),
             border: '1px solid',
-            borderColor: isSelected ? `${categoryColor}30` : 'transparent',
+            borderColor: isSelected ? categoryColor : 'transparent',
             minWidth: '24px',
             textAlign: 'center',
-            transition: 'all 0.2s ease',
           }}
         >
           {category.count}
@@ -122,48 +128,54 @@ export default function Categories({ displayMode = "vertical" }) {
   const { data: categories = [], isLoading } = useCategories();
 
   const handleCategoryClick = useCallback((category) => {
-    // Si la categoría ya está seleccionada, la deseleccionamos
-    if (selectedCategory?.slug === category.slug) {
+    const normalizedCategory = category.name;
+    
+    if (selectedCategory?.name === category.name) {
       setSelectedCategory(null);
       const params = new URLSearchParams(searchParams.toString());
       params.delete('category');
-      params.delete('page'); // Resetear la página al cambiar de categoría
+      params.delete('page');
       router.push(`?${params.toString()}`);
       return;
     }
 
-    // Seleccionar nueva categoría
     setSelectedCategory(category);
     const params = new URLSearchParams(searchParams.toString());
-    params.set('category', category.slug);
-    params.delete('page'); // Resetear la página al cambiar de categoría
-    router.push(`?${params.toString()}`);
+    params.set('category', normalizedCategory);
+    params.delete('page');
+    router.push(`?${params.toString()}`, { scroll: false });
   }, [router, searchParams, selectedCategory]);
 
-  // Sincronizar el estado con los cambios en la URL
-  useEffect(() => {
-    if (!categoryFilter) {
-      setSelectedCategory(null);
-    } else if ((!selectedCategory || selectedCategory.slug !== categoryFilter) && categories.length > 0) {
-      const category = categories.find(cat => cat.slug === categoryFilter);
-      if (category) {
-        setSelectedCategory(category);
-      }
+  // Optimizar la sincronización con URL usando useMemo
+  const syncCategoryWithURL = useMemo(() => {
+    if (!categoryFilter && selectedCategory) {
+      return null;
     }
+    
+    if (categoryFilter && (!selectedCategory || selectedCategory.name !== categoryFilter)) {
+      return categories.find(cat => cat.name === categoryFilter) || null;
+    }
+    
+    return selectedCategory;
   }, [categoryFilter, categories, selectedCategory]);
+
+  useEffect(() => {
+    setSelectedCategory(syncCategoryWithURL);
+  }, [syncCategoryWithURL]);
 
   // Actualizar containerStyles
   const containerStyles = useMemo(() => ({
     width: '100%',
     height: {
-      xs: '80px', // Aumentamos un poco la altura en móvil
+      xs: '80px',
       md: displayMode === 'vertical' ? '300px' : '80px',
     },
-    borderRadius: '12px',
-    border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-    backgroundColor: theme.palette.background.paper,
+    borderRadius: '16px',
+    border: `1px solid ${alpha('#ded1e7', 0.3)}`,
+    backgroundColor: '#FFFFFF',
+    boxShadow: '0 2px 6px rgba(54, 49, 76, 0.05)',
     overflow: 'hidden',
-  }), [theme, displayMode]);
+  }), [displayMode]);
 
   // Estilos para el scroll
   const scrollStyles = useMemo(() => ({

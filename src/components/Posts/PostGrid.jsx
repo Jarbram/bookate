@@ -24,7 +24,6 @@ import Image from 'next/image';
 import PostCard from './PostCard';
 import Pagination from './Pagination';
 import { 
-  ViewAgenda as ViewAgendaIcon, 
   GridView as GridViewIcon, 
   FilterList as FilterListIcon,
   Sort as SortIcon,
@@ -48,22 +47,22 @@ const MemoizedPostCard = memo(PostCard);
 const POSTS_PER_PAGE = 12;
 const THEME = {
   primary: {
-    main: '#6200ea',
-    light: '#7c4dff',
-    dark: '#4a148c',
+    main: '#7182bb',
+    light: '#ded1e7',
+    dark: '#36314c',
   },
   text: {
-    primary: '#1a1a1a',
+    primary: '#36314c',
     secondary: '#666666',
   },
   background: {
-    default: '#ffffff',
+    default: '#FFFFFF',
     paper: '#f8f9fa',
     accent: '#f3f4f6',
   },
   border: {
-    light: 'rgba(0,0,0,0.08)',
-    medium: 'rgba(0,0,0,0.12)',
+    light: 'rgba(54, 49, 76, 0.08)',
+    medium: 'rgba(54, 49, 76, 0.12)',
   }
 };
 
@@ -72,7 +71,6 @@ export default function PostGrid() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPosts, setTotalPosts] = useState(0);
-  const [viewMode, setViewMode] = useState('grid');
   const [sortOrder, setSortOrder] = useState('newest');
   const [selectedPostId, setSelectedPostId] = useState(null);
   const [isNavigating, setIsNavigating] = useState(false);
@@ -126,47 +124,77 @@ export default function PostGrid() {
   });
 
   // Optimización: Consolidar efectos relacionados con cambios de filtros
-  useEffect(() => {
-    const handleFiltersChange = async () => {
-      const newFilters = { category: categoryFilter, search: searchQuery, sortOrder };
-      const hasChanged = JSON.stringify(newFilters) !== JSON.stringify(lastFiltersRef.current);
+  const handleFiltersChange = useCallback(() => {
+    if (!Array.isArray(allPosts)) return;
+    
+    setLoading(true);
+    
+    try {
+      let filteredResults = [...allPosts];
       
-      if (!hasChanged) return;
-      
-      setLoading(true);
-      
-      try {
-        let filteredResults = [...allPosts];
-        
-        if (searchQuery) {
-          filteredResults = filterPostsBySearch(searchQuery, filteredResults);
-        }
-        
-        if (categoryFilter) {
-          filteredResults = filterPostsByCategory(categoryFilter, filteredResults);
-        }
-        
-        filteredResults = sortPosts(filteredResults, sortOrder);
-        
-        setPosts(filteredResults);
-        setTotalPosts(filteredResults.length);
-        setPage(1);
-        
-        lastFiltersRef.current = newFilters;
-        
-      } catch (error) {
-        setPosts([]);
-        setTotalPosts(0);
-      } finally {
-        setLoading(false);
-        setIsUpdatingUI(false);
-      }
-    };
+      if (categoryFilter) {
+        filteredResults = filteredResults.filter(post => {
+          // Memoizar el parsing de categorías
+          const postCategories = useMemo(() => {
+            try {
+              return typeof post.categories === 'string' 
+                ? JSON.parse(post.categories) 
+                : (Array.isArray(post.categories) ? post.categories : []);
+            } catch {
+              return [];
+            }
+          }, [post.categories]);
 
-    if (allPosts.length > 0) {
-      handleFiltersChange();
+          return postCategories
+            .map(cat => cat.toLowerCase().trim())
+            .includes(categoryFilter.toLowerCase().trim());
+        });
+      }
+
+      if (searchQuery) {
+        const searchLower = searchQuery.toLowerCase();
+        filteredResults = filteredResults.filter(post =>
+          post.title.toLowerCase().includes(searchLower) ||
+          (post.content && post.content.toLowerCase().includes(searchLower))
+        );
+      }
+
+      // Ordenar resultados
+      filteredResults.sort((a, b) => {
+        const dateA = new Date(a.publishDate || a.created_at);
+        const dateB = new Date(b.publishDate || b.created_at);
+        return sortOrder === 'oldest' 
+          ? dateA - dateB 
+          : dateB - dateA;
+      });
+
+      setPosts(filteredResults);
+      setTotalPosts(filteredResults.length);
+      
+    } catch (error) {
+      setPosts([]);
+      setTotalPosts(0);
+    } finally {
+      setLoading(false);
+      setIsUpdatingUI(false);
     }
-  }, [searchQuery, categoryFilter, sortOrder, allPosts, filterPostsBySearch, filterPostsByCategory, sortPosts]);
+  }, [allPosts, categoryFilter, searchQuery, sortOrder]);
+
+  useEffect(() => {
+    handleFiltersChange();
+  }, [handleFiltersChange]);
+
+  // Efecto adicional para manejar la paginación
+  useEffect(() => {
+    if (!posts.length) return;
+
+    const startIndex = (page - 1) * POSTS_PER_PAGE;
+    const endIndex = startIndex + POSTS_PER_PAGE;
+    const paginatedPosts = posts.slice(startIndex, endIndex);
+
+    // Actualizar los posts paginados
+    setPosts(paginatedPosts);
+  }, [page, posts.length]);
 
   // Optimización: Obtener recuento de posts una sola vez por categoría
   useEffect(() => {
@@ -226,13 +254,11 @@ export default function PostGrid() {
       setIsUpdatingUI(true);
       setPage(value);
       
-      // Scroll suave con animación
       const scrollOptions = {
         top: 0,
         behavior: 'smooth'
       };
       
-      // Actualizar URL y scroll
       const params = new URLSearchParams(searchParams.toString());
       params.set('page', value.toString());
       router.push(`?${params.toString()}`, { 
@@ -241,10 +267,6 @@ export default function PostGrid() {
         window.scrollTo(scrollOptions);
         setTimeout(() => setIsUpdatingUI(false), 300);
       });
-    },
-    viewChange: (newMode) => {
-      setViewMode(newMode);
-      localStorage.setItem('preferredViewMode', newMode);
     },
     sortChange: (event) => {
       setSortOrder(event.target.value);
@@ -367,65 +389,32 @@ export default function PostGrid() {
     fetchPosts();
   }, [fetchPosts]);
 
-  useEffect(() => {
-    const savedMode = localStorage.getItem('preferredViewMode');
-    if (savedMode) setViewMode(savedMode);
-  }, []);
-
   // Actualizar los estilos para mejor respuesta móvil
   const styles = useMemo(() => ({
     controlBar: {
       display: 'flex',
-      flexDirection: { xs: 'column', sm: 'row' }, // Apilar en móvil
-      gap: { xs: 2, sm: 0 }, // Espacio entre elementos apilados
+      flexDirection: { xs: 'column', sm: 'row' },
+      gap: { xs: 2, sm: 0 },
       justifyContent: 'space-between',
-      alignItems: { xs: 'stretch', sm: 'center' }, // Estirar elementos en móvil
+      alignItems: { xs: 'stretch', sm: 'center' },
       mb: 4,
-      px: { xs: 1.5, sm: 2 }, // Menos padding en móvil
+      px: { xs: 1.5, sm: 2 },
       py: { xs: 2, sm: 1.5 },
       borderRadius: 2,
       backgroundColor: THEME.background.paper,
       boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
       border: `1px solid ${THEME.border.light}`,
     },
-    viewButton: (isActive) => ({
-      minWidth: 'auto',
-      px: 2,
-      py: 1,
-      borderRadius: 1.5,
-      backgroundColor: isActive ? alpha(THEME.primary.main, 0.1) : 'transparent',
-      color: isActive ? THEME.primary.main : THEME.text.secondary,
-      border: 'none',
-      '&:hover': {
-        backgroundColor: isActive 
-          ? alpha(THEME.primary.main, 0.15)
-          : alpha(THEME.primary.main, 0.05),
-      }
-    }),
-    sortSelect: {
-      '.MuiOutlinedInput-root': {
-        borderRadius: 1.5,
-        backgroundColor: THEME.background.default,
-        '&:hover': {
-          backgroundColor: alpha(THEME.primary.main, 0.02),
-        },
-        '& fieldset': {
-          borderColor: THEME.border.light,
-        }
-      }
-    },
     gridContainer: {
       display: 'grid',
-      gridTemplateColumns: viewMode === 'grid' 
-        ? { 
-            xs: '1fr',                    // Una columna en móvil
-            sm: 'repeat(2, 1fr)',         // Dos columnas en tablet
-            lg: 'repeat(3, 1fr)'          // Tres columnas en desktop
-          }
-        : '1fr',
-      gap: { xs: 2, sm: 3 }, // Menor espacio entre cards en móvil
+      gridTemplateColumns: { 
+        xs: '1fr',
+        sm: 'repeat(2, 1fr)',
+        lg: 'repeat(3, 1fr)'
+      },
+      gap: { xs: 2, sm: 3 },
       mb: 5,
-      px: { xs: 0, sm: 0 }, // Eliminar padding horizontal en móvil
+      px: { xs: 0, sm: 0 },
     },
     paginationInfo: {
       textAlign: 'center',
@@ -439,220 +428,97 @@ export default function PostGrid() {
       fontWeight: 500,
       mb: 3,
     },
-    listContainer: {
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 2,
-      mb: 5,
-      px: { xs: 2, sm: 0 },
-    },
-    listItem: {
-      backgroundColor: THEME.background.default,
-      borderRadius: 2,
-      transition: 'all 0.2s ease-in-out',
-      border: `1px solid ${THEME.border.light}`,
-      overflow: 'hidden',
-      '&:hover': {
-        transform: 'translateY(-2px)',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-        borderColor: THEME.border.medium,
+    sortSelect: {
+      '.MuiOutlinedInput-root': {
+        borderRadius: 1.5,
+        backgroundColor: THEME.background.default,
+        '&:hover': {
+          backgroundColor: alpha(THEME.primary.main, 0.02),
+        },
+        '& fieldset': {
+          borderColor: THEME.border.light,
+        }
       }
     },
-    listItemContent: {
-      display: 'flex',
-      flexDirection: 'column', // Siempre columna en móvil
-      alignItems: 'stretch',
-      height: '100%',
-    },
-    listImageContainer: {
-      width: '100%', // Ancho completo en móvil
-      height: { xs: '180px', sm: '220px' }, // Altura reducida en móvil
-      position: 'relative',
-      overflow: 'hidden',
-      borderBottom: `1px solid ${THEME.border.light}`,
-    },
-    listTextContent: {
-      flex: 1,
-      p: { xs: 2, sm: 3 }, // Menos padding en móvil
-      display: 'flex',
-      flexDirection: 'column',
-      justifyContent: 'space-between',
-    },
-    listTitle: {
-      fontSize: { xs: '1.1rem', sm: '1.25rem' }, // Título más pequeño en móvil
-      fontWeight: 700,
-      color: THEME.text.primary,
-      mb: 1.5,
-      display: '-webkit-box',
-      WebkitLineClamp: 2,
-      WebkitBoxOrient: 'vertical',
-      overflow: 'hidden',
-      lineHeight: 1.4,
-    },
-    listExcerpt: {
-      color: THEME.text.secondary,
-      fontSize: '0.95rem',
-      mb: 3,
-      display: '-webkit-box',
-      WebkitLineClamp: 3,
-      WebkitBoxOrient: 'vertical',
-      overflow: 'hidden',
-      lineHeight: 1.6,
-    },
-    listMeta: {
-      display: 'flex',
-      flexDirection: { xs: 'column', sm: 'row' }, // Apilar meta en móvil
-      gap: { xs: 1, sm: 0 },
-      justifyContent: 'space-between',
-      alignItems: { xs: 'flex-start', sm: 'center' },
-      mt: 'auto',
-      pt: 2,
-      borderTop: `1px solid ${THEME.border.light}`,
-    },
-    categoryChips: {
-      display: 'flex',
-      gap: 0.5, // Menor espacio entre chips
-      flexWrap: 'wrap',
-      mb: { xs: 1, sm: 2 },
-      '& .MuiChip-root': {
-        height: 24, // Chips más pequeños en móvil
-        fontSize: '0.7rem',
-      }
-    },
-  }), [viewMode]);
+  }), []);
 
-  // Función renderizado mejorada para modo lista
-  const renderListView = (post) => (
-    <Paper 
-      elevation={0}
-      sx={styles.listItem}
-      component={motion.div}
-      whileHover={{ y: -2 }}
-      transition={{ type: "spring", stiffness: 300, damping: 20 }}
-    >
-      <Box sx={styles.listItemContent}>
-        <Box sx={styles.listImageContainer}>
-          <Image
-            src={post.featuredImage}
-            alt={post.title}
-            fill
-            sizes="(max-width: 768px) 100vw, 300px"
-            style={{
-              objectFit: 'cover',
-              transition: 'transform 0.3s ease',
-            }}
-          />
-        </Box>
-
-        <Box sx={styles.listTextContent}>
-          <Box>
-            {post.categories && (
-              <Box sx={styles.categoryChips}>
-                {post.categories.map((category) => (
-                  <Chip
-                    key={category}
-                    label={category}
-                    size="small"
-                    sx={{
-                      backgroundColor: alpha(THEME.primary.main, 0.08),
-                      color: THEME.primary.main,
-                      fontWeight: 500,
-                      fontSize: '0.75rem',
-                    }}
-                  />
-                ))}
-              </Box>
-            )}
-
-            <Typography variant="h2" sx={styles.listTitle}>
-              {post.title}
-            </Typography>
-
-            <Typography sx={styles.listExcerpt}>
-              {post.excerpt}
-            </Typography>
-          </Box>
-
-          <Box sx={styles.listMeta}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Typography 
-                variant="caption" 
-                sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  color: THEME.text.secondary,
-                  fontWeight: 500,
-                }}
-              >
-                <CalendarTodayIcon sx={{ fontSize: 16, mr: 0.5 }} />
-                {new Date(post.publishDate).toLocaleDateString('es-ES', {
-                  day: 'numeric',
-                  month: 'long',
-                  year: 'numeric'
-                })}
-              </Typography>
-            </Box>
-
-            <Button
-              variant="outlined"
-              size="small"
+  // Actualizar renderPosts para mostrar el estado de carga
+  const renderPosts = () => {
+    if (loading) {
+      return (
+        <Box sx={{ width: '100%', display: 'grid', gap: 2 }}>
+          {[...Array(POSTS_PER_PAGE)].map((_, index) => (
+            <Skeleton 
+              key={`skeleton-${index}`}
+              variant="rectangular"
               sx={{
-                borderRadius: 1.5,
-                textTransform: 'none',
-                px: 2,
-                borderColor: alpha(THEME.primary.main, 0.2),
-                color: THEME.primary.main,
-                '&:hover': {
-                  borderColor: THEME.primary.main,
-                  backgroundColor: alpha(THEME.primary.main, 0.05),
-                }
+                height: 320,
+                borderRadius: 2,
+                backgroundColor: alpha(THEME.primary.main, 0.04),
               }}
-              onClick={() => handlers.postClick(post)}
-            >
-              Leer más
-            </Button>
-          </Box>
+            />
+          ))}
         </Box>
-      </Box>
-    </Paper>
-  );
+      );
+    }
 
-  // Mejorar el renderizado de "No results"
-  const renderNoResults = () => (
-    <Box 
-      sx={{ 
-        textAlign: 'center', 
-        py: 5,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: 2
-      }}
-    >
-      <SearchIcon 
-        sx={{ 
-          fontSize: '3rem', 
-          color: alpha(THEME.primary.main, 0.3)
-        }} 
-      />
-      <Typography variant="h6" color="textSecondary">
-        No se encontraron artículos
-        {searchQuery && (
-          <Typography variant="body2" sx={{ mt: 1 }}>
-            para la búsqueda: &quot;{searchQuery}&quot;
-            <Button 
-              variant="text" 
-              size="small"
-              onClick={handlers.clearSearch}
-              sx={{ ml: 1 }}
-            >
-              Limpiar búsqueda
-            </Button>
+    if (!posts.length) {
+      return (
+        <Box sx={{ 
+          textAlign: 'center', 
+          py: 5,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 2
+        }}>
+          <SearchIcon 
+            sx={{ 
+              fontSize: '3rem', 
+              color: alpha(THEME.primary.main, 0.3)
+            }} 
+          />
+          <Typography variant="h6" color="textSecondary">
+            No se encontraron artículos
+            {categoryFilter && (
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                en la categoría: &quot;{categoryFilter}&quot;
+              </Typography>
+            )}
+            {searchQuery && (
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                para la búsqueda: &quot;{searchQuery}&quot;
+              </Typography>
+            )}
           </Typography>
-        )}
-      </Typography>
-    </Box>
-  );
+        </Box>
+      );
+    }
+
+    return (
+      <Box 
+        sx={styles.gridContainer}
+        component={motion.div}
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        {posts.map((post) => (
+          <motion.div
+            key={post.id}
+            variants={itemVariants}
+            layout
+          >
+            <MemoizedPostCard 
+              post={post}
+              onClick={() => handlers.postClick(post)}
+              isSelected={selectedPostId === post.id}
+            />
+          </motion.div>
+        ))}
+      </Box>
+    );
+  };
 
   // Añadir efecto para cargar más posts
   useEffect(() => {
@@ -684,109 +550,22 @@ export default function PostGrid() {
     loadMore();
   }, [inView, isMobile, page, loadingMore, hasMore]);
 
-  // Actualizar renderPosts para usar el nuevo diseño de lista
-  const renderPosts = () => {
-    if (loading) {
-      return (
-        <Box sx={{ width: '100%', display: 'grid', gap: 2 }}>
-          {[...Array(POSTS_PER_PAGE)].map((_, index) => (
-            <Skeleton 
-              key={`skeleton-${index}`}
-              variant="rectangular"
-              sx={{
-                height: viewMode === 'grid' ? 320 : 220,
-                borderRadius: 2,
-                backgroundColor: alpha(THEME.primary.main, 0.04),
-              }}
-            />
-          ))}
-        </Box>
-      );
-    }
-
-    if (!posts.length) {
-      return renderNoResults();
-    }
-
-    return (
-      <>
-        <Box 
-          sx={viewMode === 'grid' ? styles.gridContainer : styles.listContainer}
-          component={motion.div}
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          {posts.map((post) => (
-            <motion.div
-              key={post.id}
-              variants={itemVariants}
-              layout
-            >
-              <MemoizedPostCard 
-                post={post}
-                viewMode={viewMode}
-                onClick={() => handlers.postClick(post)}
-                isSelected={selectedPostId === post.id}
-              />
-            </motion.div>
-          ))}
-        </Box>
-
-        {/* Referencia para infinite scroll en móvil */}
-        {isMobile && hasMore && (
-          <Box 
-            ref={loadMoreRef}
-            sx={{ 
-              display: 'flex', 
-              justifyContent: 'center',
-              py: 4 
-            }}
-          >
-            {loadingMore && (
-              <CircularProgress 
-                size={24}
-                sx={{ color: THEME.primary.main }}
-              />
-            )}
-          </Box>
-        )}
-      </>
-    );
-  };
-
   return (
     <Box sx={{ 
       width: '100%', 
       maxWidth: '1200px', 
       mx: 'auto', 
-      px: { xs: 1, sm: 4 }, // Menos padding en móvil
-      py: { xs: 1, sm: 4 }  // Menos padding en móvil
+      px: { xs: 1, sm: 4 },
+      py: { xs: 1, sm: 4 }
     }}>
-      {/* Barra de control mejorada */}
+      {/* Barra de control simplificada */}
       <Paper sx={styles.controlBar} elevation={0}>
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-          <Tooltip title="Vista en grid">
-            <IconButton 
-              onClick={() => handlers.viewChange('grid')}
-              sx={styles.viewButton(viewMode === 'grid')}
-            >
-              <GridViewIcon />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Vista en lista">
-            <IconButton
-              onClick={() => handlers.viewChange('list')}
-              sx={styles.viewButton(viewMode === 'list')}
-            >
-              <ViewAgendaIcon />
-            </IconButton>
-          </Tooltip>
+          <GridViewIcon sx={{ color: THEME.primary.main }} />
           <Chip 
             label={`${totalPosts} artículos`}
             size="small"
             sx={{ 
-              ml: 1,
               backgroundColor: alpha(THEME.primary.main, 0.08),
               color: THEME.primary.main,
             }}
@@ -809,10 +588,10 @@ export default function PostGrid() {
         </Box>
       </Paper>
 
-      {/* Grid de posts con animación mejorada */}
+      {/* Grid de posts */}
       <AnimatePresence mode="wait">
         <motion.div
-          key={viewMode + page}
+          key={page}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}

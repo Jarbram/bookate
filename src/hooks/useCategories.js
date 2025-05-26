@@ -3,7 +3,12 @@ import { supabase } from '@/lib/supabase';
 
 // Función utilitaria para normalizar strings de categorías
 export function normalizeCategoryString(category) {
-  return category.toLowerCase().replace(/\s+/g, '-');
+  return category
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
 }
 
 export function useCategories() {

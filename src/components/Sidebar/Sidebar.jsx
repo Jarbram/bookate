@@ -17,17 +17,6 @@ export default function Sidebar({ categories = [], loading = false }) {
     >
       {/* Buscador */}
       <Box sx={{ mb: 4 }}>
-        <Typography 
-          variant="h6" 
-          component="h2" 
-          sx={{ 
-            mb: 2,
-            fontWeight: 700,
-            color: 'text.primary'
-          }}
-        >
-          Buscar
-        </Typography>
         {loading ? (
           <Skeleton height={56} />
         ) : (
@@ -37,17 +26,6 @@ export default function Sidebar({ categories = [], loading = false }) {
 
       {/* Categorías */}
       <Box sx={{ mb: 4 }}>
-        <Typography 
-          variant="h6" 
-          component="h2" 
-          sx={{ 
-            mb: 2,
-            fontWeight: 700,
-            color: 'text.primary'
-          }}
-        >
-          Categorías
-        </Typography>
         {loading ? (
           <>
             <Skeleton height={32} />
@@ -61,17 +39,6 @@ export default function Sidebar({ categories = [], loading = false }) {
 
       {/* Instagram Feed */}
       <Box>
-        <Typography 
-          variant="h6" 
-          component="h2" 
-          sx={{ 
-            mb: 2,
-            fontWeight: 700,
-            color: 'text.primary'
-          }}
-        >
-          Síguenos en Instagram
-        </Typography>
         {loading ? (
           <Box sx={{ 
             display: 'grid', 

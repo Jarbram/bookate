@@ -33,14 +33,23 @@ import { motion } from 'framer-motion';
 export default function Footer({ darkMode = false }) {
   const [isVisible, setIsVisible] = useState(false);
   
-  // Colores primarios del tema (manteniendo coherencia con el Header)
-  const primaryLight = '#6200ea';
-  const primaryDark = '#bb86fc';
-  const bgColor = darkMode ? '#121212' : '#ffffff';
-  const textColor = darkMode ? '#e0e0e0' : '#1a1a1a';
-  const accentColor = darkMode ? '#bb86fc' : '#6200ea';
-  const secondaryBg = darkMode ? '#1a1a1a' : '#f8f9fa';
-  
+  // Nueva paleta de colores
+  const colors = {
+    background: '#FFFFFF',
+    text: '#36314c',
+    primary: '#7182bb',
+    secondary: '#ded1e7',
+  };
+
+  // Configuración de colores según modo oscuro/claro
+  const theme = {
+    bg: darkMode ? '#2a2438' : colors.background,
+    text: colors.text,
+    accent: colors.primary,
+    secondary: colors.secondary,
+    gradient: `linear-gradient(to bottom, ${darkMode ? '#2a2438' : colors.background}, ${darkMode ? '#36314c' : colors.secondary})`
+  };
+
   useEffect(() => {
     const handleScroll = () => {
       const scrolled = window.scrollY > window.innerHeight * 0.3;
@@ -70,17 +79,15 @@ export default function Footer({ darkMode = false }) {
     <Box 
       component="footer" 
       sx={{ 
-        backgroundImage: darkMode 
-          ? 'linear-gradient(to bottom, #121212, #1a1a1a)'
-          : 'linear-gradient(to bottom, #ffffff, #f8f9fa)',
+        backgroundImage: theme.gradient,
         pt: { xs: 6, md: 8 },
         pb: { xs: 8, md: 10 },
-        borderTop: `1px solid ${darkMode ? 'rgba(255,255,255,0.08)' : '#eaeaea'}`,
+        borderTop: `1px solid ${alpha(theme.accent, 0.1)}`,
         position: 'relative',
         overflow: 'hidden',
       }}
     >
-      {/* Elementos decorativos mejorados */}
+      {/* Elementos decorativos */}
       <Box
         sx={{
           position: 'absolute',
@@ -89,7 +96,7 @@ export default function Footer({ darkMode = false }) {
           width: '300px',
           height: '300px',
           borderRadius: '50%',
-          background: `radial-gradient(circle, ${alpha(accentColor, 0.08)} 0%, transparent 70%)`,
+          background: `radial-gradient(circle, ${alpha(theme.accent, 0.08)} 0%, transparent 70%)`,
           zIndex: 0,
           display: { xs: 'none', md: 'block' }
         }}
@@ -103,14 +110,13 @@ export default function Footer({ darkMode = false }) {
           width: '350px',
           height: '350px',
           borderRadius: '50%',
-          background: `radial-gradient(circle, ${alpha(accentColor, 0.05)} 0%, transparent 70%)`,
+          background: `radial-gradient(circle, ${alpha(theme.secondary, 0.1)} 0%, transparent 70%)`,
           zIndex: 0,
           display: { xs: 'none', md: 'block' }
         }}
       />
 
       <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
-        {/* Sección superior revisada */}
         <Box sx={{ 
           display: 'flex', 
           flexDirection: { xs: 'column', md: 'row' },
@@ -119,6 +125,7 @@ export default function Footer({ darkMode = false }) {
           mb: { xs: 5, md: 7 },
           gap: { xs: 3, md: 4 }
         }}>
+          {/* Sección del logo */}
           <Box sx={{ 
             mb: { xs: 1, md: 0 },
             maxWidth: { xs: '100%', md: '45%' } 
@@ -129,7 +136,7 @@ export default function Footer({ darkMode = false }) {
               sx={{ 
                 fontWeight: 800, 
                 mb: 2.5,
-                color: textColor,
+                color: theme.text,
                 display: 'flex',
                 alignItems: 'center'
               }}
@@ -137,15 +144,15 @@ export default function Footer({ darkMode = false }) {
               <MenuBookIcon sx={{ 
                 mr: 1.5, 
                 fontSize: '2.2rem', 
-                color: accentColor,
-                filter: darkMode ? 'drop-shadow(0 0 2px rgba(187,134,252,0.3))' : 'drop-shadow(0 0 2px rgba(98,0,234,0.2))'
+                color: theme.accent,
+                filter: `drop-shadow(0 0 2px ${alpha(theme.accent, 0.3)})`
               }} />
               Bookate
             </Typography>
             <Typography 
               variant="subtitle1" 
               sx={{ 
-                color: darkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.8)',
+                color: alpha(theme.text, 0.9),
                 fontWeight: 500,
                 mb: 1,
                 letterSpacing: 0.2
@@ -157,7 +164,7 @@ export default function Footer({ darkMode = false }) {
             <Typography 
               variant="body2" 
               sx={{ 
-                color: darkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)',
+                color: alpha(theme.text, 0.7),
                 lineHeight: 1.6
               }}
             >
@@ -165,7 +172,7 @@ export default function Footer({ darkMode = false }) {
             </Typography>
           </Box>
 
-          {/* Sección de redes sociales (Instagram) */}
+          {/* Sección de redes sociales */}
           <Box sx={{ 
             textAlign: { xs: 'left', md: 'left' },
             maxWidth: { xs: '100%', md: '25%' },
@@ -175,7 +182,7 @@ export default function Footer({ darkMode = false }) {
               variant="h6" 
               sx={{ 
                 fontWeight: 700,
-                color: textColor,
+                color: theme.text,
                 mb: 2.5,
                 display: 'flex',
                 alignItems: 'center',
@@ -189,7 +196,7 @@ export default function Footer({ darkMode = false }) {
                   width: '4px',
                   height: '20px',
                   borderRadius: '4px',
-                  backgroundColor: accentColor,
+                  backgroundColor: theme.accent,
                 }
               }}
             >
@@ -198,7 +205,7 @@ export default function Footer({ darkMode = false }) {
             
             <Typography variant="body2" sx={{ 
               mb: 2.5, 
-              color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
+              color: alpha(theme.text, 0.7),
               lineHeight: 1.5
             }}>
               Descubre nuestro contenido en Instagram
@@ -209,17 +216,15 @@ export default function Footer({ darkMode = false }) {
                 aria-label="Instagram"
                 size="medium"
                 sx={{ 
-                  backgroundColor: darkMode ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.04)',
-                  color: darkMode ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.8)',
+                  backgroundColor: alpha(theme.accent, 0.1),
+                  color: theme.accent,
                   p: 1.5,
                   borderRadius: '12px',
                   '&:hover': {
-                    backgroundColor: accentColor,
-                    color: 'white',
+                    backgroundColor: theme.accent,
+                    color: theme.bg,
                     transform: 'translateY(-3px)',
-                    boxShadow: darkMode 
-                      ? '0 6px 15px rgba(187,134,252,0.3)' 
-                      : '0 6px 15px rgba(98,0,234,0.2)',
+                    boxShadow: `0 6px 15px ${alpha(theme.accent, 0.25)}`,
                   },
                   transition: 'all 0.3s ease'
                 }}
@@ -229,7 +234,7 @@ export default function Footer({ darkMode = false }) {
             </Box>
           </Box>
 
-          {/* Sección de newsletter revisada */}
+          {/* Sección de newsletter */}
           <Box sx={{ 
             maxWidth: { xs: '100%', md: '30%' },
             order: { xs: 2, md: 3 }
@@ -238,7 +243,7 @@ export default function Footer({ darkMode = false }) {
               variant="h6" 
               sx={{ 
                 fontWeight: 700,
-                color: textColor,
+                color: theme.text,
                 mb: 2.5,
                 display: 'flex',
                 alignItems: 'center',
@@ -252,7 +257,7 @@ export default function Footer({ darkMode = false }) {
                   width: '4px',
                   height: '20px',
                   borderRadius: '4px',
-                  backgroundColor: accentColor,
+                  backgroundColor: theme.accent,
                 }
               }}
             >
@@ -261,10 +266,10 @@ export default function Footer({ darkMode = false }) {
             
             <Typography variant="body2" sx={{ 
               mb: 3, 
-              color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
+              color: alpha(theme.text, 0.7),
               lineHeight: 1.6
             }}>
-              Suscríbete para recibir recomendaciones literarias, noticias sobre nuevos lanzamientos y contenido exclusivo directamente en tu bandeja de entrada.
+              Suscríbete para recibir recomendaciones literarias, noticias sobre nuevos lanzamientos y contenido exclusivo.
             </Typography>
             
             <Box sx={{ 
@@ -279,22 +284,22 @@ export default function Footer({ darkMode = false }) {
                 variant="outlined"
                 sx={{ 
                   '& .MuiOutlinedInput-root': {
-                    backgroundColor: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.02)',
+                    backgroundColor: alpha(theme.bg, 0.8),
                     borderRadius: '10px',
                     '& fieldset': {
-                      borderColor: darkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)',
+                      borderColor: alpha(theme.accent, 0.2),
                       borderWidth: '1px',
                     },
                     '&:hover fieldset': {
-                      borderColor: darkMode ? 'rgba(187,134,252,0.5)' : 'rgba(98,0,234,0.5)',
+                      borderColor: alpha(theme.accent, 0.5),
                     },
                     '&.Mui-focused fieldset': {
-                      borderColor: accentColor,
+                      borderColor: theme.accent,
                       borderWidth: '1px',
                     }
                   },
                   '& .MuiInputBase-input': {
-                    color: textColor,
+                    color: theme.text,
                     padding: '14px 16px',
                   }
                 }}
@@ -303,22 +308,18 @@ export default function Footer({ darkMode = false }) {
                 variant="contained"
                 fullWidth
                 sx={{ 
-                  backgroundColor: accentColor,
-                  color: 'white',
+                  backgroundColor: theme.accent,
+                  color: theme.bg,
                   borderRadius: '10px',
                   textTransform: 'none',
                   padding: '12px 20px',
                   fontWeight: 600,
                   letterSpacing: 0.3,
-                  boxShadow: darkMode 
-                    ? '0 4px 12px rgba(187,134,252,0.25)'
-                    : '0 4px 12px rgba(98,0,234,0.15)',
+                  boxShadow: `0 4px 12px ${alpha(theme.accent, 0.25)}`,
                   '&:hover': {
-                    backgroundColor: darkMode ? '#c89dfd' : '#5000d3',
+                    backgroundColor: alpha(theme.accent, 0.9),
                     transform: 'translateY(-2px)',
-                    boxShadow: darkMode 
-                      ? '0 6px 15px rgba(187,134,252,0.35)'
-                      : '0 6px 15px rgba(98,0,234,0.25)',
+                    boxShadow: `0 6px 15px ${alpha(theme.accent, 0.35)}`,
                   },
                   transition: 'all 0.25s ease'
                 }}
@@ -330,7 +331,7 @@ export default function Footer({ darkMode = false }) {
         </Box>
       </Container>
       
-      {/* Botón de scroll mejorado */}
+      {/* Botón de scroll */}
       <Fade in={isVisible}>
         <Box
           onClick={scrollToTop}
@@ -344,27 +345,21 @@ export default function Footer({ darkMode = false }) {
             width: '45px',
             height: '45px',
             borderRadius: '12px',
-            backgroundColor: accentColor,
+            backgroundColor: theme.accent,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
-            color: '#fff',
+            color: theme.bg,
             zIndex: 10,
-            boxShadow: darkMode 
-              ? '0 4px 20px rgba(187, 134, 252, 0.35)' 
-              : '0 4px 20px rgba(98, 0, 234, 0.25)',
+            boxShadow: `0 4px 20px ${alpha(theme.accent, 0.25)}`,
             transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
             '&:hover': {
               transform: 'translateY(-5px)',
-              boxShadow: darkMode 
-                ? '0 8px 25px rgba(187, 134, 252, 0.45)' 
-                : '0 8px 25px rgba(98, 0, 234, 0.35)',
+              boxShadow: `0 8px 25px ${alpha(theme.accent, 0.35)}`,
             },
             '&:focus': {
-              outline: darkMode 
-                ? '2px solid rgba(187, 134, 252, 0.5)'
-                : '2px solid rgba(98, 0, 234, 0.5)',
+              outline: `2px solid ${alpha(theme.accent, 0.5)}`,
               outlineOffset: '2px'
             }
           }}
@@ -373,7 +368,6 @@ export default function Footer({ darkMode = false }) {
         </Box>
       </Fade>
       
-      {/* Estilo global para animaciones */}
       <style jsx global>{`
         @keyframes fadeIn {
           from { opacity: 0; }

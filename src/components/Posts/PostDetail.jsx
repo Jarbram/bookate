@@ -25,11 +25,23 @@ import { supabase } from '@/lib/supabase';
 import Header from '@/components/Header/Header';
 import RelatedPosts from '@/components/Posts/RelatedPosts';
 
-// Optimización: Mover constantes fuera del componente
+// Actualización del objeto THEME con la nueva paleta y tipografía
 const THEME = {
-  accentColor: '#6200ea',
-  textColor: '#1a1a1a',
-  bgColor: '#ffffff'
+  primary: '#36314c',     // Color principal para textos
+  secondary: '#7182bb',   // Color secundario para elementos interactivos
+  accent: '#ded1e7',      // Color de acento para fondos suaves
+  background: '#FFFFFF',  // Color de fondo principal
+  textLight: '#36314c99', // Versión con transparencia para textos secundarios
+  typography: {
+    fontFamily: 'League Spartan, sans-serif',
+    h1: {
+      fontFamily: 'League Spartan, sans-serif',
+      fontWeight: 700,
+    },
+    body: {
+      fontFamily: 'League Spartan, sans-serif',
+    }
+  }
 };
 
 // Componente de esqueleto simplificado
@@ -46,9 +58,9 @@ const PostDetailSkeleton = () => {
           right: 0, 
           zIndex: 9999,
           height: 3,
-          backgroundColor: alpha(accentColor, 0.1),
+          backgroundColor: alpha(THEME.secondary, 0.1),
           '& .MuiLinearProgress-bar': {
-            backgroundColor: accentColor
+            backgroundColor: THEME.secondary
           }
         }} 
       />
@@ -267,28 +279,32 @@ export default function PostDetail({ post }) {
       <div className="MuiContainer-root" style={{ 
         padding: '2rem 1rem',
         maxWidth: '1200px',
-        margin: '0 auto'
+        margin: '0 auto',
+        backgroundColor: THEME.background
       }}>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          {/* Cabecera */}
+          {/* Cabecera con nuevos estilos */}
           <Box sx={{ mb: 4 }}>
             <Link href="/" passHref>
               <IconButton 
                 sx={{ 
                   mb: 2,
-                  color: alpha(THEME.textColor, 0.7),
-                  '&:hover': { backgroundColor: alpha(THEME.accentColor, 0.08) }
+                  color: THEME.textLight,
+                  '&:hover': { 
+                    backgroundColor: alpha(THEME.accent, 0.3),
+                    color: THEME.primary
+                  }
                 }}
               >
                 <ArrowBackIcon />
               </IconButton>
             </Link>
 
-            {/* Categorías */}
+            {/* Categorías actualizadas */}
             <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
               {categories.map((category, index) => (
                 <Chip
@@ -298,27 +314,31 @@ export default function PostDetail({ post }) {
                   component={Link}
                   href={`/?category=${encodeURIComponent(category)}`}
                   sx={{
-                    backgroundColor: alpha(THEME.accentColor, 0.08),
-                    color: THEME.accentColor,
+                    backgroundColor: alpha(THEME.accent, 0.3),
+                    color: THEME.primary,
                     '&:hover': {
-                      backgroundColor: alpha(THEME.accentColor, 0.15)
-                    }
+                      backgroundColor: alpha(THEME.secondary, 0.15),
+                      color: THEME.secondary
+                    },
+                    transition: 'all 0.3s ease'
                   }}
                 />
               ))}
             </Box>
 
-            {/* Título */}
+            {/* Título con nuevo estilo */}
             <Typography variant="h1" sx={{
               fontSize: { xs: '2rem', md: '2.5rem' },
               fontWeight: 700,
-              color: THEME.textColor,
-              mb: 2
+              color: THEME.primary,
+              mb: 2,
+              letterSpacing: '-0.02em',
+              fontFamily: THEME.typography.fontFamily
             }}>
               {post.title}
             </Typography>
 
-            {/* Meta información */}
+            {/* Meta información actualizada */}
             <Box sx={{ 
               display: 'flex', 
               justifyContent: 'space-between',
@@ -329,7 +349,7 @@ export default function PostDetail({ post }) {
                 sx={{ 
                   display: 'flex',
                   alignItems: 'center',
-                  color: alpha(THEME.textColor, 0.7),
+                  color: THEME.textLight,
                   fontSize: '0.9rem'
                 }}
               >
@@ -337,28 +357,36 @@ export default function PostDetail({ post }) {
                 {formattedDate}
               </Typography>
 
-              <IconButton onClick={handleShare}>
+              <IconButton 
+                onClick={handleShare}
+                sx={{
+                  color: THEME.secondary,
+                  '&:hover': {
+                    backgroundColor: alpha(THEME.accent, 0.3)
+                  }
+                }}
+              >
                 <ShareIcon />
               </IconButton>
             </Box>
           </Box>
 
-          {/* Imagen destacada mejorada */}
+          {/* Imagen destacada corregida */}
           {renderImage && (
             <Box sx={{ 
               position: 'relative',
               width: '100%',
               height: { 
-                xs: '200px',    // Móvil
-                sm: '300px',    // Tablet
-                md: '400px',    // Desktop pequeño
-                lg: '500px'     // Desktop grande
+                xs: '200px',
+                sm: '300px',
+                md: '400px',
+                lg: '500px'
               },
               mb: 4,
               borderRadius: '16px',
               overflow: 'hidden',
-              backgroundColor: alpha(THEME.textColor, 0.05),
-              boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+              backgroundColor: alpha(THEME.primary, 0.05),
+              boxShadow: `0 4px 12px ${alpha(THEME.primary, 0.1)}`
             }}>
               <Image
                 src={imageUrl}
@@ -377,7 +405,7 @@ export default function PostDetail({ post }) {
                 onError={() => setImageError(true)}
               />
 
-              {/* Estado de carga */}
+              {/* Estado de carga actualizado */}
               {!imageLoaded && !imageError && (
                 <Box
                   sx={{
@@ -389,15 +417,15 @@ export default function PostDetail({ post }) {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    backgroundColor: alpha(THEME.textColor, 0.05),
+                    backgroundColor: alpha(THEME.primary, 0.05),
                   }}
                 >
                   <LinearProgress 
                     sx={{ 
                       width: '200px',
-                      backgroundColor: alpha(THEME.accentColor, 0.1),
+                      backgroundColor: alpha(THEME.secondary, 0.1),
                       '& .MuiLinearProgress-bar': {
-                        backgroundColor: THEME.accentColor
+                        backgroundColor: THEME.secondary
                       }
                     }} 
                   />
@@ -406,22 +434,23 @@ export default function PostDetail({ post }) {
             </Box>
           )}
 
-          {/* Contenido principal */}
+          {/* Contenido principal actualizado */}
           <Paper
             elevation={0}
             sx={{
               p: { xs: 3, md: 5 },
               borderRadius: '16px',
-              backgroundColor: THEME.bgColor,
-              border: '1px solid rgba(0,0,0,0.05)',
-              mb: 5
+              backgroundColor: THEME.background,
+              border: `1px solid ${alpha(THEME.primary, 0.1)}`,
+              mb: 5,
+              boxShadow: `0 4px 20px ${alpha(THEME.primary, 0.05)}`
             }}
           >
-            {/* Extracto */}
+            {/* Extracto actualizado */}
             <Box sx={{
               p: 3,
-              backgroundColor: alpha(THEME.accentColor, 0.05),
-              borderLeft: `4px solid ${THEME.accentColor}`,
+              backgroundColor: alpha(THEME.accent, 0.2),
+              borderLeft: `4px solid ${THEME.secondary}`,
               borderRadius: '8px',
               mb: 5
             }}>
@@ -429,20 +458,32 @@ export default function PostDetail({ post }) {
                 variant="subtitle1"
                 sx={{
                   fontStyle: 'italic',
-                  color: alpha(THEME.textColor, 0.85)
+                  color: THEME.primary,
+                  lineHeight: 1.6
                 }}
               >
                 {post.excerpt}
               </Typography>
             </Box>
 
-            {/* Contenido del post */}
+            {/* Contenido del post actualizado */}
             <Box className="markdown-content" sx={{
               '& p': { 
                 fontSize: { xs: '1rem', md: '1.1rem' },
                 lineHeight: 1.8,
-                color: alpha(THEME.textColor, 0.85),
-                mb: 2
+                color: THEME.primary,
+                mb: 2,
+                fontFamily: THEME.typography.fontFamily
+              },
+              '& a': {
+                color: THEME.secondary,
+                textDecoration: 'none',
+                borderBottom: `1px solid ${alpha(THEME.secondary, 0.3)}`,
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  borderBottom: `1px solid ${THEME.secondary}`,
+                  backgroundColor: alpha(THEME.accent, 0.2)
+                }
               }
             }}>
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
