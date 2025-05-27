@@ -50,7 +50,8 @@ const PostGrid = dynamic(() => import('@/components/Posts/PostGrid'), {
     <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
       <CircularProgress />
     </Box>
-  )
+  ),
+  delay: 200
 });
 
 // Componentes cargados dinámicamente con SSR:false para evitar errores de hidratación

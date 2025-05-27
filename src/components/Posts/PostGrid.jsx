@@ -67,6 +67,7 @@ const THEME = {
 };
 
 export default function PostGrid() {
+  const [initialized, setInitialized] = useState(false);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -311,6 +312,8 @@ export default function PostGrid() {
 
   // Optimizar la función fetchPosts
   const fetchPosts = useCallback(async () => {
+    if (!initialized) return; // No ejecutar si no está inicializado
+
     try {
       setLoading(true);
       const from = (page - 1) * POSTS_PER_PAGE;
@@ -355,10 +358,23 @@ export default function PostGrid() {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [page, searchQuery, categoryFilter, sortOrder]);
+  }, [page, searchQuery, categoryFilter, sortOrder, initialized]);
 
-  // Consolidar efectos relacionados con la carga
+  // Efecto de inicialización
   useEffect(() => {
+    const initializeComponent = async () => {
+      // Esperar un momento para asegurar que el componente está montado
+      await new Promise(resolve => setTimeout(resolve, 100));
+      setInitialized(true);
+    };
+
+    initializeComponent();
+  }, []);
+
+  // Modificar el efecto principal para incluir initialized
+  useEffect(() => {
+    if (!initialized) return;
+    
     // Resetear estado cuando cambian los filtros
     if (searchQuery !== lastFiltersRef.current.search || 
         categoryFilter !== lastFiltersRef.current.category || 
@@ -368,7 +384,7 @@ export default function PostGrid() {
     }
     
     fetchPosts();
-  }, [fetchPosts, searchQuery, categoryFilter, sortOrder]);
+  }, [fetchPosts, searchQuery, categoryFilter, sortOrder, initialized]);
 
   // Optimizar la carga infinita para móviles
   useEffect(() => {
@@ -555,95 +571,103 @@ export default function PostGrid() {
       px: { xs: 1, sm: 4 },
       py: { xs: 1, sm: 4 }
     }}>
-      {/* Barra de control simplificada */}
-      <Paper sx={styles.controlBar} elevation={0}>
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-          <GridViewIcon sx={{ color: THEME.primary.main }} />
-          <Chip 
-            label={`${totalPosts} artículos`}
-            size="small"
-            sx={{ 
-              backgroundColor: alpha(THEME.primary.main, 0.08),
-              color: THEME.primary.main,
-            }}
-          />
+      {!initialized ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+          <CircularProgress />
         </Box>
+      ) : (
+        <>
+          {/* Barra de control simplificada */}
+          <Paper sx={styles.controlBar} elevation={0}>
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              <GridViewIcon sx={{ color: THEME.primary.main }} />
+              <Chip 
+                label={`${totalPosts} artículos`}
+                size="small"
+                sx={{ 
+                  backgroundColor: alpha(THEME.primary.main, 0.08),
+                  color: THEME.primary.main,
+                }}
+              />
+            </Box>
 
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          {renderCategoryChip}
-          <FormControl size="small" variant="outlined">
-            <Select
-              value={sortOrder}
-              onChange={handlers.sortChange}
-              sx={styles.sortSelect}
-              startAdornment={<SortIcon sx={{ mr: 1, color: THEME.text.secondary }} />}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              {renderCategoryChip}
+              <FormControl size="small" variant="outlined">
+                <Select
+                  value={sortOrder}
+                  onChange={handlers.sortChange}
+                  sx={styles.sortSelect}
+                  startAdornment={<SortIcon sx={{ mr: 1, color: THEME.text.secondary }} />}
+                >
+                  <MenuItem value="newest">Más recientes</MenuItem>
+                  <MenuItem value="oldest">Más antiguos</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+          </Paper>
+
+          {/* Grid de posts */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={page}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
             >
-              <MenuItem value="newest">Más recientes</MenuItem>
-              <MenuItem value="oldest">Más antiguos</MenuItem>
-            </Select>
-          </FormControl>
-        </Box>
-      </Paper>
+              {renderPosts()}
+            </motion.div>
+          </AnimatePresence>
 
-      {/* Grid de posts */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={page}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          transition={{ duration: 0.3 }}
-        >
-          {renderPosts()}
-        </motion.div>
-      </AnimatePresence>
+          {/* Información de paginación mejorada */}
+          {totalPosts > 0 && (
+            <Box sx={styles.paginationInfo}>
+              Mostrando {Math.min((page - 1) * POSTS_PER_PAGE + 1, totalPosts)} - {Math.min(page * POSTS_PER_PAGE, totalPosts)} de {totalPosts} artículos
+            </Box>
+          )}
 
-      {/* Información de paginación mejorada */}
-      {totalPosts > 0 && (
-        <Box sx={styles.paginationInfo}>
-          Mostrando {Math.min((page - 1) * POSTS_PER_PAGE + 1, totalPosts)} - {Math.min(page * POSTS_PER_PAGE, totalPosts)} de {totalPosts} artículos
-        </Box>
-      )}
-
-      {/* Paginación mejorada */}
-      {!isMobile && totalPosts > POSTS_PER_PAGE && (
-        <Box 
-          component={motion.div}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          sx={{ 
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: 2,
-            mt: 4
-          }}
-        >
-          <Pagination 
-            count={totalPages}
-            page={page}
-            onChange={handlers.pageChange}
-            variant="enhanced"
-            darkMode={false}
-          />
-          
-          <Typography
-            variant="body2"
-            sx={{
-              color: THEME.text.secondary,
-              fontSize: '0.875rem',
-              px: 2,
-              py: 1,
-              borderRadius: 2,
-              backgroundColor: alpha(THEME.primary.main, 0.04),
-              border: `1px solid ${alpha(THEME.primary.main, 0.08)}`,
-              display: { xs: 'none', sm: 'block' }
-            }}
-          >
-            Página {page} de {totalPages}
-          </Typography>
-        </Box>
+          {/* Paginación mejorada */}
+          {!isMobile && totalPosts > POSTS_PER_PAGE && (
+            <Box 
+              component={motion.div}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              sx={{ 
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 2,
+                mt: 4
+              }}
+            >
+              <Pagination 
+                count={totalPages}
+                page={page}
+                onChange={handlers.pageChange}
+                variant="enhanced"
+                darkMode={false}
+              />
+              
+              <Typography
+                variant="body2"
+                sx={{
+                  color: THEME.text.secondary,
+                  fontSize: '0.875rem',
+                  px: 2,
+                  py: 1,
+                  borderRadius: 2,
+                  backgroundColor: alpha(THEME.primary.main, 0.04),
+                  border: `1px solid ${alpha(THEME.primary.main, 0.08)}`,
+                  display: { xs: 'none', sm: 'block' }
+                }}
+              >
+                Página {page} de {totalPages}
+              </Typography>
+            </Box>
+          )}
+        </>
       )}
     </Box>
   );
