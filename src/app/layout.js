@@ -4,7 +4,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import theme from '../theme/theme';
 import { League_Spartan } from 'next/font/google';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import Script from 'next/script';
+
 import { Providers } from './providers';
 
 const leagueSpartan = League_Spartan({
@@ -20,13 +20,6 @@ export default function RootLayout({ children }) {
     <QueryClientProvider client={queryClient}>
       <html lang="es" className={leagueSpartan.className}>
         <head>
-          <Script
-            async
-            src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"
-            data-ad-client="ca-pub-8583192861201767"
-            crossOrigin="anonymous"
-            strategy="afterInteractive"
-          />
         </head>
         <body>
           <Providers>{children}</Providers>
