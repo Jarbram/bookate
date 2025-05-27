@@ -276,262 +276,268 @@ export default function PostDetail({ post }) {
   return (
     <>
       <Header darkMode={false} />
-      <div className="MuiContainer-root" style={{ 
-        padding: '2rem 1rem',
-        maxWidth: '1200px',
-        margin: '0 auto',
-        backgroundColor: THEME.background
+      <Box sx={{ 
+        overflowX: 'hidden',
+        width: '100%'
       }}>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          {/* Cabecera con nuevos estilos */}
-          <Box sx={{ mb: 4 }}>
-            <Link href="/" passHref>
-              <IconButton 
-                sx={{ 
-                  mb: 2,
-                  color: THEME.textLight,
-                  '&:hover': { 
-                    backgroundColor: alpha(THEME.accent, 0.3),
-                    color: THEME.primary
-                  }
-                }}
-              >
-                <ArrowBackIcon />
-              </IconButton>
-            </Link>
-
-            {/* Categorías actualizadas */}
-            <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-              {categories.map((category, index) => (
-                <Chip
-                  key={index}
-                  label={category}
-                  size="small"
-                  component={Link}
-                  href={`/?category=${encodeURIComponent(category)}`}
-                  sx={{
-                    backgroundColor: alpha(THEME.accent, 0.3),
-                    color: THEME.primary,
-                    '&:hover': {
-                      backgroundColor: alpha(THEME.secondary, 0.15),
-                      color: THEME.secondary
-                    },
-                    transition: 'all 0.3s ease'
-                  }}
-                />
-              ))}
-            </Box>
-
-            {/* Título con nuevo estilo */}
-            <Typography variant="h1" sx={{
-              fontSize: { xs: '2rem', md: '2.5rem' },
-              fontWeight: 700,
-              color: THEME.primary,
-              mb: 2,
-              letterSpacing: '-0.02em',
-              fontFamily: THEME.typography.fontFamily
-            }}>
-              {post.title}
-            </Typography>
-
-            {/* Meta información actualizada */}
-            <Box sx={{ 
-              display: 'flex', 
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              mb: 4 
-            }}>
-              <Typography 
-                sx={{ 
-                  display: 'flex',
-                  alignItems: 'center',
-                  color: THEME.textLight,
-                  fontSize: '0.9rem'
-                }}
-              >
-                <CalendarTodayIcon sx={{ fontSize: '1rem', mr: 1 }} />
-                {formattedDate}
-              </Typography>
-
-              <IconButton 
-                onClick={handleShare}
-                sx={{
-                  color: THEME.secondary,
-                  '&:hover': {
-                    backgroundColor: alpha(THEME.accent, 0.3)
-                  }
-                }}
-              >
-                <ShareIcon />
-              </IconButton>
-            </Box>
-          </Box>
-
-          {/* Imagen destacada corregida */}
-          {renderImage && (
-            <Box sx={{ 
-              position: 'relative',
-              width: '100%',
-              height: { 
-                xs: '200px',
-                sm: '300px',
-                md: '400px',
-                lg: '500px'
-              },
-              mb: 4,
-              borderRadius: '16px',
-              overflow: 'hidden',
-              backgroundColor: alpha(THEME.primary, 0.05),
-              boxShadow: `0 4px 12px ${alpha(THEME.primary, 0.1)}`
-            }}>
-              <Image
-                src={imageUrl}
-                alt={post?.title || 'Imagen del post'}
-                fill
-                sizes="(max-width: 600px) 100vw, 
-                       (max-width: 960px) 90vw,
-                       1200px"
-                style={{ 
-                  objectFit: 'cover',
-                  objectPosition: 'center'
-                }}
-                priority
-                loading="eager"
-                onLoad={() => setImageLoaded(true)}
-                onError={() => setImageError(true)}
-              />
-
-              {/* Estado de carga actualizado */}
-              {!imageLoaded && !imageError && (
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: alpha(THEME.primary, 0.05),
+        <Container sx={{ 
+          px: { xs: 2, sm: 3 },
+          py: 4,
+          maxWidth: '1200px !important'
+        }}>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            {/* Cabecera con nuevos estilos */}
+            <Box sx={{ mb: 4 }}>
+              <Link href="/" passHref>
+                <IconButton 
+                  sx={{ 
+                    mb: 2,
+                    color: THEME.textLight,
+                    '&:hover': { 
+                      backgroundColor: alpha(THEME.accent, 0.3),
+                      color: THEME.primary
+                    }
                   }}
                 >
-                  <LinearProgress 
-                    sx={{ 
-                      width: '200px',
-                      backgroundColor: alpha(THEME.secondary, 0.1),
-                      '& .MuiLinearProgress-bar': {
-                        backgroundColor: THEME.secondary
-                      }
-                    }} 
+                  <ArrowBackIcon />
+                </IconButton>
+              </Link>
+
+              {/* Categorías actualizadas */}
+              <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+                {categories.map((category, index) => (
+                  <Chip
+                    key={index}
+                    label={category}
+                    size="small"
+                    component={Link}
+                    href={`/?category=${encodeURIComponent(category)}`}
+                    sx={{
+                      backgroundColor: alpha(THEME.accent, 0.3),
+                      color: THEME.primary,
+                      '&:hover': {
+                        backgroundColor: alpha(THEME.secondary, 0.15),
+                        color: THEME.secondary
+                      },
+                      transition: 'all 0.3s ease'
+                    }}
                   />
-                </Box>
-              )}
-            </Box>
-          )}
+                ))}
+              </Box>
 
-          {/* Contenido principal actualizado */}
-          <Paper
-            elevation={0}
-            sx={{
-              p: { xs: 3, md: 5 },
-              borderRadius: '16px',
-              backgroundColor: THEME.background,
-              border: `1px solid ${alpha(THEME.primary, 0.1)}`,
-              mb: 5,
-              boxShadow: `0 4px 20px ${alpha(THEME.primary, 0.05)}`
-            }}
-          >
-            {/* Extracto actualizado */}
-            <Box sx={{
-              p: 3,
-              backgroundColor: alpha(THEME.accent, 0.2),
-              borderLeft: `4px solid ${THEME.secondary}`,
-              borderRadius: '8px',
-              mb: 5
-            }}>
-              <Typography
-                variant="subtitle1"
-                sx={{
-                  fontStyle: 'italic',
-                  color: THEME.primary,
-                  lineHeight: 1.6
-                }}
-              >
-                {post.excerpt}
-              </Typography>
-            </Box>
-
-            {/* Contenido del post actualizado */}
-            <Box className="markdown-content" sx={{
-              '& p': { 
-                fontSize: { xs: '1rem', md: '1.1rem' },
-                lineHeight: 1.8,
+              {/* Título con nuevo estilo */}
+              <Typography variant="h1" sx={{
+                fontSize: { xs: '2rem', md: '2.5rem' },
+                fontWeight: 700,
                 color: THEME.primary,
                 mb: 2,
+                letterSpacing: '-0.02em',
                 fontFamily: THEME.typography.fontFamily
-              },
-              '& a': {
-                color: THEME.secondary,
-                textDecoration: 'none',
-                borderBottom: `1px solid ${alpha(THEME.secondary, 0.3)}`,
-                transition: 'all 0.2s ease',
-                '&:hover': {
-                  borderBottom: `1px solid ${THEME.secondary}`,
-                  backgroundColor: alpha(THEME.accent, 0.2)
-                }
-              }
-            }}>
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {post.content || post.excerpt}
-              </ReactMarkdown>
-            </Box>
-          </Paper>
+              }}>
+                {post.title}
+              </Typography>
 
-          {/* Agregar RelatedPosts después del contenido principal */}
-          <Box sx={{ mt: 4 }}>
-            <Typography 
-              variant="h2" 
+              {/* Meta información actualizada */}
+              <Box sx={{ 
+                display: 'flex', 
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                mb: 4 
+              }}>
+                <Typography 
+                  sx={{ 
+                    display: 'flex',
+                    alignItems: 'center',
+                    color: THEME.textLight,
+                    fontSize: '0.9rem'
+                  }}
+                >
+                  <CalendarTodayIcon sx={{ fontSize: '1rem', mr: 1 }} />
+                  {formattedDate}
+                </Typography>
+
+                <IconButton 
+                  onClick={handleShare}
+                  sx={{
+                    color: THEME.secondary,
+                    '&:hover': {
+                      backgroundColor: alpha(THEME.accent, 0.3)
+                    }
+                  }}
+                >
+                  <ShareIcon />
+                </IconButton>
+              </Box>
+            </Box>
+
+            {/* Imagen destacada corregida */}
+            {renderImage && (
+              <Box sx={{ 
+                position: 'relative',
+                width: '100%',
+                height: { 
+                  xs: '200px',
+                  sm: '300px',
+                  md: '400px',
+                  lg: '500px'
+                },
+                mb: 4,
+                borderRadius: '16px',
+                overflow: 'hidden',
+                backgroundColor: alpha(THEME.primary, 0.05),
+                boxShadow: `0 4px 12px ${alpha(THEME.primary, 0.1)}`
+              }}>
+                <Image
+                  src={imageUrl}
+                  alt={post?.title || 'Imagen del post'}
+                  fill
+                  sizes="(max-width: 600px) 100vw, 
+                         (max-width: 960px) 90vw,
+                         1200px"
+                  style={{ 
+                    objectFit: 'cover',
+                    objectPosition: 'center'
+                  }}
+                  priority
+                  loading="eager"
+                  onLoad={() => setImageLoaded(true)}
+                  onError={() => setImageError(true)}
+                />
+
+                {/* Estado de carga actualizado */}
+                {!imageLoaded && !imageError && (
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: alpha(THEME.primary, 0.05),
+                    }}
+                  >
+                    <LinearProgress 
+                      sx={{ 
+                        width: '200px',
+                        backgroundColor: alpha(THEME.secondary, 0.1),
+                        '& .MuiLinearProgress-bar': {
+                          backgroundColor: THEME.secondary
+                        }
+                      }} 
+                    />
+                  </Box>
+                )}
+              </Box>
+            )}
+
+            {/* Contenido principal actualizado */}
+            <Paper
+              elevation={0}
               sx={{
-                fontSize: '1.5rem',
-                fontWeight: 700,
-                mb: 3,
-                color: THEME.textColor
+                p: { xs: 2, sm: 3, md: 5 },
+                borderRadius: '16px',
+                backgroundColor: THEME.background,
+                border: `1px solid ${alpha(THEME.primary, 0.1)}`,
+                mb: 5,
+                boxShadow: `0 4px 20px ${alpha(THEME.primary, 0.05)}`,
+                width: '100%',
+                boxSizing: 'border-box'
               }}
             >
-              Artículos relacionados
-            </Typography>
-            
-            <RelatedPosts 
-              currentPostId={post?.id?.toString()} // Asegurarse de que sea string
-              categories={formattedCategories}
-              tags={formattedTags}
-              limit={3}
-            />
-          </Box>
-        </motion.div>
+              {/* Extracto actualizado */}
+              <Box sx={{
+                p: 3,
+                backgroundColor: alpha(THEME.accent, 0.2),
+                borderLeft: `4px solid ${THEME.secondary}`,
+                borderRadius: '8px',
+                mb: 5
+              }}>
+                <Typography
+                  variant="subtitle1"
+                  sx={{
+                    fontStyle: 'italic',
+                    color: THEME.primary,
+                    lineHeight: 1.6
+                  }}
+                >
+                  {post.excerpt}
+                </Typography>
+              </Box>
 
-        {/* Snackbar para notificaciones */}
-        <Snackbar
-          open={snackbarOpen}
-          autoHideDuration={3000}
-          onClose={() => setSnackbarOpen(false)}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-        >
-          <Alert 
+              {/* Contenido del post actualizado */}
+              <Box className="markdown-content" sx={{
+                '& p': { 
+                  fontSize: { xs: '1rem', md: '1.1rem' },
+                  lineHeight: 1.8,
+                  color: THEME.primary,
+                  mb: 2,
+                  fontFamily: THEME.typography.fontFamily
+                },
+                '& a': {
+                  color: THEME.secondary,
+                  textDecoration: 'none',
+                  borderBottom: `1px solid ${alpha(THEME.secondary, 0.3)}`,
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    borderBottom: `1px solid ${THEME.secondary}`,
+                    backgroundColor: alpha(THEME.accent, 0.2)
+                  }
+                }
+              }}>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {post.content || post.excerpt}
+                </ReactMarkdown>
+              </Box>
+            </Paper>
+
+            {/* Agregar RelatedPosts después del contenido principal */}
+            <Box sx={{ mt: 4 }}>
+              <Typography 
+                variant="h2" 
+                sx={{
+                  fontSize: '1.5rem',
+                  fontWeight: 700,
+                  mb: 3,
+                  color: THEME.textColor
+                }}
+              >
+                Artículos relacionados
+              </Typography>
+              
+              <RelatedPosts 
+                currentPostId={post?.id?.toString()} // Asegurarse de que sea string
+                categories={formattedCategories}
+                tags={formattedTags}
+                limit={3}
+              />
+            </Box>
+          </motion.div>
+
+          {/* Snackbar para notificaciones */}
+          <Snackbar
+            open={snackbarOpen}
+            autoHideDuration={3000}
             onClose={() => setSnackbarOpen(false)}
-            severity="success"
-            variant="filled"
-            sx={{ width: '100%' }}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
           >
-            {snackbarMessage}
-          </Alert>
-        </Snackbar>
-      </div>
+            <Alert 
+              onClose={() => setSnackbarOpen(false)}
+              severity="success"
+              variant="filled"
+              sx={{ width: '100%' }}
+            >
+              {snackbarMessage}
+            </Alert>
+          </Snackbar>
+        </Container>
+      </Box>
     </>
   );
 } 

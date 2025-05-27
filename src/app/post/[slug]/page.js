@@ -67,12 +67,14 @@ async function getPostBySlug(slug) {
 
 // Generación de metadatos para SEO
 export async function generateMetadata(props) {
-  const slug = String(props.params?.slug || '');
+  // Esperar a que params se resuelva
+  const params = await props.params;
+  const slug = String(params?.slug || '');
   
   if (!slug) {
     return {
-      title: 'Artículo no encontrado',
-      description: 'El artículo que buscas no existe o ha sido eliminado.'
+      title: 'Post no encontrado',
+      description: 'El post que buscas no existe'
     };
   }
   
@@ -110,7 +112,9 @@ export async function generateMetadata(props) {
 // Función principal de la página
 export default async function PostPage(props) {
   try {
-    const slug = String(props.params?.slug || '');
+    // Esperar a que params se resuelva
+    const params = await props.params;
+    const slug = String(params?.slug || '');
     
     if (!slug) {
       notFound();

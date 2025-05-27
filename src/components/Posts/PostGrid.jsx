@@ -309,7 +309,7 @@ export default function PostGrid() {
     }
   }), []);
 
-  // Optimizar la función fetchPosts para mejor manejo de errores y logging
+  // Optimizar la función fetchPosts
   const fetchPosts = useCallback(async () => {
     try {
       setLoading(true);
@@ -321,40 +321,67 @@ export default function PostGrid() {
         .select('*', { count: 'exact' })
         .eq('status', 'published');
 
-      if (searchQuery) {
-        query = query.or(`title.ilike.%${searchQuery}%,content.ilike.%${searchQuery}%`);
+      // Aplicar filtros de manera más eficiente
+      if (searchQuery || categoryFilter) {
+        const filters = [];
+        if (searchQuery) {
+          filters.push(`title.ilike.%${searchQuery}%`);
+          filters.push(`content.ilike.%${searchQuery}%`);
+        }
+        if (categoryFilter) {
+          query = query.contains('categories', [categoryFilter]);
+        }
+        if (filters.length > 0) {
+          query = query.or(filters.join(','));
+        }
       }
 
-      if (categoryFilter) {
-        query = query.contains('categories', [categoryFilter]);
-      }
-
-      query = query.order('publishDate', { ascending: sortOrder === 'oldest' });
-      query = query.range(from, to);
-
-      const { data, error, count } = await query;
+      const { data, error, count } = await query
+        .order('publishDate', { ascending: sortOrder === 'oldest' })
+        .range(from, to);
 
       if (error) throw error;
 
       setPosts(data || []);
       setTotalPosts(count || 0);
+      setHasMore(count > to + 1);
 
     } catch (error) {
+      console.error('Error fetching posts:', error);
       setPosts([]);
       setTotalPosts(0);
+      setHasMore(false);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }, [page, searchQuery, categoryFilter, sortOrder]);
 
-  // Añadir efecto para manejar cambios en la búsqueda
+  // Consolidar efectos relacionados con la carga
   useEffect(() => {
-    // Resetear a la primera página cuando cambia la búsqueda
-    if (searchQuery !== undefined) {
+    // Resetear estado cuando cambian los filtros
+    if (searchQuery !== lastFiltersRef.current.search || 
+        categoryFilter !== lastFiltersRef.current.category || 
+        sortOrder !== lastFiltersRef.current.sortOrder) {
       setPage(1);
-      fetchPosts();
+      lastFiltersRef.current = { search: searchQuery, category: categoryFilter, sortOrder };
     }
-  }, [searchQuery, fetchPosts]);
+    
+    fetchPosts();
+  }, [fetchPosts, searchQuery, categoryFilter, sortOrder]);
+
+  // Optimizar la carga infinita para móviles
+  useEffect(() => {
+    const loadMore = async () => {
+      if (!isMobile || !inView || loadingMore || !hasMore) return;
+      
+      setLoadingMore(true);
+      const nextPage = page + 1;
+      setPage(nextPage);
+    };
+
+    loadMore();
+  }, [inView, isMobile, page, loadingMore, hasMore]);
 
   // Optimizar el renderizado del chip de categoría
   const renderCategoryChip = useMemo(() => {
@@ -519,36 +546,6 @@ export default function PostGrid() {
       </Box>
     );
   };
-
-  // Añadir efecto para cargar más posts
-  useEffect(() => {
-    const loadMore = async () => {
-      if (!isMobile || !inView || loadingMore || !hasMore) return;
-      
-      setLoadingMore(true);
-      try {
-        const nextPage = page + 1;
-        const startIndex = nextPage * POSTS_PER_PAGE;
-        const endIndex = startIndex + POSTS_PER_PAGE;
-        const nextPosts = allPosts.slice(startIndex, endIndex);
-        
-        if (nextPosts.length === 0) {
-          setHasMore(false);
-          return;
-        }
-
-        setPosts(prevPosts => [...prevPosts, ...nextPosts]);
-        setPage(nextPage);
-        
-      } catch (error) {
-        console.error('Error cargando más posts:', error);
-      } finally {
-        setLoadingMore(false);
-      }
-    };
-
-    loadMore();
-  }, [inView, isMobile, page, loadingMore, hasMore]);
 
   return (
     <Box sx={{ 
