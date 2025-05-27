@@ -280,7 +280,7 @@ export default function PostDetail({ post }) {
         async
         src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8583192861201767"
         crossOrigin="anonymous"
-        strategy="lazyOnload"
+        strategy="afterInteractive"
       />
       <Header darkMode={false} />
       <Box sx={{ 

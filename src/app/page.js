@@ -50,8 +50,7 @@ const PostGrid = dynamic(() => import('@/components/Posts/PostGrid'), {
     <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
       <CircularProgress />
     </Box>
-  ),
-  delay: 200
+  )
 });
 
 // Componentes cargados dinámicamente con SSR:false para evitar errores de hidratación
@@ -80,7 +79,7 @@ export default function Home() {
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8583192861201767"
           crossOrigin="anonymous"
-          strategy="lazyOnload"
+          strategy="afterInteractive"
         />
         <Suspense fallback={<LoadingSkeleton />}>
           <HomeContent />
@@ -122,7 +121,9 @@ function HomeContent() {
             width: { xs: '100%', md: '75%' },
             flexGrow: 1
           }}>
-            <PostGrid />
+            <Suspense fallback={<LoadingSkeleton />}>
+              <PostGrid />
+            </Suspense>
           </Box>
         </Box>
         
