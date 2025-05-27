@@ -127,17 +127,6 @@ function HomeContent() {
           mt: 4 
         }}>
           <Divider sx={{ mb: 4 }} />
-          <Typography 
-            variant="h5" 
-            component="h2" 
-            sx={{ 
-              mb: 3, 
-              fontWeight: 700,
-              color: 'text.primary'
-            }}
-          >
-            Descubre más
-          </Typography>
           <MobileSidebarContentComponent 
             showSearchAndCategories={false}
           />

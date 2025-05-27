@@ -15,17 +15,6 @@ export default function MobileSidebarContent({
         <>
           {/* Buscador */}
           <Box sx={{ mb: 3 }}>
-            <Typography 
-              variant="h6" 
-              component="h2" 
-              sx={{ 
-                mb: 2,
-                fontWeight: 700,
-                color: 'text.primary'
-              }}
-            >
-              Buscar
-            </Typography>
             <SearchBox />
           </Box>
 
@@ -33,17 +22,6 @@ export default function MobileSidebarContent({
 
           {/* Categorías en modo horizontal para móvil */}
           <Box sx={{ mb: 3 }}>
-            <Typography 
-              variant="h6" 
-              component="h2" 
-              sx={{ 
-                mb: 2,
-                fontWeight: 700,
-                color: 'text.primary'
-              }}
-            >
-              Categorías
-            </Typography>
             <Categories 
               categories={categories}
               loading={loading}
