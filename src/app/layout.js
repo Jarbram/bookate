@@ -21,9 +21,10 @@ export default function RootLayout({ children }) {
         <head>
           <Script
             async
-            src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8583192861201767"
+            src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"
+            data-ad-client="ca-pub-8583192861201767"
             crossOrigin="anonymous"
-            strategy="lazyOnload"
+            strategy="afterInteractive"
           />
         </head>
         <body>

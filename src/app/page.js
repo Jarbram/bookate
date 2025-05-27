@@ -4,7 +4,7 @@ import { Container, Typography, Box, Divider, CircularProgress } from '@mui/mate
 import dynamic from 'next/dynamic';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
-import Script from 'next/script';
+
 
 // Crear el cliente de Query
 const queryClient = new QueryClient();
@@ -75,12 +75,6 @@ export default function Home() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider theme={theme}>
-        <Script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8583192861201767"
-          crossOrigin="anonymous"
-          strategy="afterInteractive"
-        />
         <Suspense fallback={<LoadingSkeleton />}>
           <HomeContent />
         </Suspense>

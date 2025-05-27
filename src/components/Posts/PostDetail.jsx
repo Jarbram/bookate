@@ -24,7 +24,8 @@ import remarkGfm from 'remark-gfm';
 import { supabase } from '@/lib/supabase';
 import Header from '@/components/Header/Header';
 import RelatedPosts from '@/components/Posts/RelatedPosts';
-import Script from 'next/script';
+import AdUnit from '@/components/AdUnit';
+
 
 // Actualización del objeto THEME con la nueva paleta y tipografía
 const THEME = {
@@ -276,13 +277,7 @@ export default function PostDetail({ post }) {
 
   return (
     <>
-      <Script
-        async
-        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8583192861201767"
-        crossOrigin="anonymous"
-        strategy="afterInteractive"
-      />
-      <Header darkMode={false} />
+      <Header />
       <Box sx={{ 
         overflowX: 'hidden',
         width: '100%'
@@ -445,21 +440,15 @@ export default function PostDetail({ post }) {
             )}
 
             {/* Añadir espacio para anuncio después del extracto */}
-            <Box sx={{
-              display: 'flex',
-              justifyContent: 'center',
-              my: 4,
-              minHeight: '250px'
-            }}>
-              <ins
-                className="adsbygoogle"
-                style={{ display: 'block' }}
-                data-ad-client="ca-pub-8583192861201767"
-                data-ad-slot="tu-ad-slot-id"
-                data-ad-format="auto"
-                data-full-width-responsive="true"
-              />
-            </Box>
+            <AdUnit 
+              slot="tu-ad-slot-id"
+              style={{
+                display: 'flex',
+                justifyContent: 'center',
+                my: 4,
+                minHeight: '250px'
+              }}
+            />
 
             {/* Contenido principal actualizado */}
             <Paper
