@@ -5,6 +5,7 @@ import theme from '../theme/theme';
 import { League_Spartan } from 'next/font/google';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import Script from 'next/script';
+import { Providers } from './providers';
 
 const leagueSpartan = League_Spartan({
   subsets: ['latin'],
@@ -28,7 +29,7 @@ export default function RootLayout({ children }) {
           />
         </head>
         <body>
-          {children}
+          <Providers>{children}</Providers>
         </body>
       </html>
     </QueryClientProvider>
