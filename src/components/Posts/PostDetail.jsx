@@ -24,8 +24,7 @@ import remarkGfm from 'remark-gfm';
 import { supabase } from '@/lib/supabase';
 import Header from '@/components/Header/Header';
 import RelatedPosts from '@/components/Posts/RelatedPosts';
-import AdUnit from '@/components/AdUnit';
-
+import AdUnit from '@/components/Ads/AdUnit';
 
 // Actualización del objeto THEME con la nueva paleta y tipografía
 const THEME = {
