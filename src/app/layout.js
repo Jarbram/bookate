@@ -3,11 +3,12 @@ import { ThemeProvider } from '@/context/ThemeContext';
 import CssBaseline from '@mui/material/CssBaseline';
 import theme from '../theme/theme';
 import { League_Spartan } from 'next/font/google';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect } from 'react';
-import Head from 'next/head';
+import dynamic from 'next/dynamic';
 
-import { Providers } from './providers';
+const HeaderComponent = dynamic(() => import('@/components/Header/Header'), { ssr: false });
+const FooterComponent = dynamic(() => import('@/components/Footer/Footer'), { ssr: false });
 
 const leagueSpartan = League_Spartan({
   subsets: ['latin'],
@@ -37,7 +38,20 @@ export default function RootLayout({ children }) {
           <meta name="google-adsense-account" content="ca-pub-8583192861201767" />
         </head>
         <body>
-          <Providers>{children}</Providers>
+          <ThemeProvider>
+            <CssBaseline />
+            <div style={{ 
+              display: 'flex', 
+              flexDirection: 'column',
+              minHeight: '100vh'
+            }}>
+              <HeaderComponent />
+              <main style={{ flex: 1 }}>
+                {children}
+              </main>
+              <FooterComponent />
+            </div>
+          </ThemeProvider>
         </body>
       </html>
     </QueryClientProvider>

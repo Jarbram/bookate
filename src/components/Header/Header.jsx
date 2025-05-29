@@ -7,23 +7,34 @@ import {
   Button, 
   Box, 
   Container,
-  alpha,
-  TextField,
   IconButton,
-  Collapse,
-  InputAdornment,
   Tooltip,
-  Zoom,
-  CircularProgress
+  Drawer,
+  List,
+  ListItem,
+  ListItemText,
+  Divider,
+  Snackbar,
+  Alert,
+  TextField,
+  InputAdornment
 } from '@mui/material';
+import { 
+  Menu as MenuIcon,
+  BookmarkBorder as BookmarkBorderIcon,
+  Bookmark as BookmarkFilledIcon,
+  Share as ShareIcon,
+  Close as CloseIcon,
+  Info as InfoIcon,
+  Home as HomeIcon,
+  Send as SendIcon,
+  Email as EmailIcon
+} from '@mui/icons-material';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
-import NotificationsIcon from '@mui/icons-material/Notifications';
-import SendIcon from '@mui/icons-material/Send';
-import CloseIcon from '@mui/icons-material/Close';
-import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
+import axios from 'axios';
 
-// Definición del tema personalizado
 const THEME = {
   background: {
     primary: '#FFFFFF',
@@ -32,410 +43,488 @@ const THEME = {
   },
   text: {
     primary: '#36314c',
-    secondary: '#36314c99', // alpha(0.6)
-    light: '#FFFFFF',
+    secondary: '#36314c99',
   },
   typography: {
-    fontFamily: 'League Spartan, sans-serif',
-  },
-  gradients: {
-    primary: 'linear-gradient(135deg, #7182bb 0%, rgba(113, 130, 187, 0.8) 100%)',
-    secondary: 'linear-gradient(135deg, #ded1e7 0%, rgba(222, 209, 231, 0.6) 100%)',
+    fontFamily: "'League Spartan', sans-serif",
   }
 };
 
-export default function Header({ darkMode = false }) {
+// Añadimos array de citas literarias
+const LITERARY_QUOTES = [
+  {
+    quote: "Un libro es un sueño que tienes en las manos",
+    author: "Neil Gaiman"
+  },
+  {
+    quote: "Siempre imaginé que el Paraíso sería algún tipo de biblioteca",
+    author: "Jorge Luis Borges"
+  },
+  {
+    quote: "Leer es vivir dos veces",
+    author: "Umberto Eco"
+  },
+  {
+    quote: "Las palabras son nuestra más inagotable fuente de magia",
+    author: "J.K. Rowling"
+  },
+  {
+    quote: "Los libros son espejos: solo ves en ellos lo que ya llevas dentro",
+    author: "Carlos Ruiz Zafón"
+  },
+  {
+    quote: "Dormir no es nada comparado con leer",
+    author: "John Green"
+  },
+  {
+    quote: "Somos lo que elegimos ser",
+    author: "Patrick Rothfuss"
+  },
+  {
+    quote: "El tiempo no es infinito para los lectores",
+    author: "Stephen King"
+  },
+  {
+    quote: "Todo lo que necesitas es la historia correcta",
+    author: "Haruki Murakami"
+  },
+  {
+    quote: "Los buenos amigos, los buenos libros y una conciencia tranquila",
+    author: "Brandon Sanderson"
+  },
+  {
+    quote: "Vivir mil vidas a través de los libros",
+    author: "George R.R. Martin"
+  },
+  {
+    quote: "Los libros son puertas a mundos infinitos",
+    author: "Leigh Bardugo"
+  },
+  {
+    quote: "La lectura es un acto de resistencia",
+    author: "Cassandra Clare"
+  },
+  {
+    quote: "Entre las páginas de un libro siempre hay luz",
+    author: "Victoria Schwab"
+  },
+  {
+    quote: "Los mejores momentos son los que pasas leyendo",
+    author: "Rainbow Rowell"
+  }
+];
+
+export default function Header({ currentPath }) {
+  const [mounted, setMounted] = useState(false);
   const [elevated, setElevated] = useState(false);
-  const [showMobileInput, setShowMobileInput] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [savedArticles, setSavedArticles] = useState([]);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+  const [currentQuoteIndex, setCurrentQuoteIndex] = useState(0);
+  const [isQuoteChanging, setIsQuoteChanging] = useState(false);
   const [email, setEmail] = useState('');
-  const [subscribed, setSubscribed] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
-  const [subscribeError, setSubscribeError] = useState('');
-  const [subscribeMessage, setSubscribeMessage] = useState('');
-  
-  const bgColor = darkMode ? alpha(THEME.background.secondary, 0.95) : THEME.background.primary;
-  const textColor = THEME.text.primary;
-  const accentColor = THEME.background.accent;
-  
+  const [subscribeDrawerOpen, setSubscribeDrawerOpen] = useState(false);
+
   useEffect(() => {
-    const handleScroll = () => {
-      setElevated(window.scrollY > 20);
-      if (showMobileInput && window.scrollY > 100) {
-        setShowMobileInput(false);
-      }
-    };
-    
+    setMounted(true);
+    const handleScroll = () => setElevated(window.scrollY > 0);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [showMobileInput]);
-  
-  const handleSubscribe = async () => {
-    if (!email || !email.includes('@')) {
-      setSubscribeError('Por favor, introduce un email válido');
-      setTimeout(() => setSubscribeError(''), 3000);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('savedArticles');
+      if (saved) {
+        setSavedArticles(JSON.parse(saved));
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const changeQuote = () => {
+        setIsQuoteChanging(true);
+        setTimeout(() => {
+          setCurrentQuoteIndex(prev => {
+            const nextIndex = Math.floor(Math.random() * LITERARY_QUOTES.length);
+            return nextIndex === prev ? 
+              (nextIndex + 1) % LITERARY_QUOTES.length : 
+              nextIndex;
+          });
+          setIsQuoteChanging(false);
+        }, 500);
+      };
+
+      const interval = setInterval(changeQuote, 5000);
+      return () => clearInterval(interval);
+    }
+  }, []);
+
+  const navigationItems = [
+    { title: 'Inicio', path: '/' },
+    { title: 'Categorías', path: '/categorias' },
+  ];
+
+  const handleSaveArticle = () => {
+    if (!currentPath) return;
+    const newSavedArticles = savedArticles.includes(currentPath)
+      ? savedArticles.filter(path => path !== currentPath)
+      : [...savedArticles, currentPath];
+
+    setSavedArticles(newSavedArticles);
+    localStorage.setItem('savedArticles', JSON.stringify(newSavedArticles));
+
+    setSnackbarMessage(
+      savedArticles.includes(currentPath)
+        ? 'Artículo removido de guardados'
+        : 'Artículo guardado para leer después'
+    );
+    setSnackbarSeverity('success');
+    setSnackbarOpen(true);
+  };
+
+  const handleShare = async () => {
+    if (!navigator.share) {
+      navigator.clipboard.writeText(window.location.href);
+      setSnackbarMessage('Enlace copiado al portapapeles');
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
       return;
     }
-    
+
     try {
-      setSubscribing(true);
-      setSubscribeError('');
-      
-      const response = await fetch('/api/subscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+      await navigator.share({
+        title: document.title,
+        url: window.location.href,
       });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        setSubscribed(true);
-        setSubscribeMessage(data.message);
-        setEmail('');
-        
-        setTimeout(() => {
-          setSubscribed(false);
-          setShowMobileInput(false);
-          setSubscribeMessage('');
-        }, 3000);
-      } else {
-        setSubscribeError(data.message || 'Error al procesar tu suscripción');
-        setTimeout(() => setSubscribeError(''), 3000);
-      }
+      setSnackbarMessage('¡Contenido compartido!');
+      setSnackbarSeverity('success');
     } catch (error) {
-      setSubscribeError('Error al conectar con el servidor');
-      setTimeout(() => setSubscribeError(''), 3000);
+      setSnackbarMessage('Error al compartir');
+      setSnackbarSeverity('error');
     } finally {
-      setSubscribing(false);
+      setSnackbarOpen(true);
     }
   };
 
-  return (
-    <AppBar 
-      position="sticky" 
-      elevation={elevated ? 4 : 0}
+  const handleSubscribe = async (e) => {
+    e.preventDefault();
+    if (!email || !email.includes('@')) {
+      setSnackbarMessage('Por favor, ingresa un email válido');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+      return;
+    }
+
+    setSubscribing(true);
+    try {
+      const response = await axios.post('/api/subscribe', { email });
+      setSnackbarMessage(response.data.message);
+      setSnackbarSeverity(response.data.success ? 'success' : 'error');
+      if (response.data.success) {
+        setEmail('');
+        setSubscribeDrawerOpen(false);
+      }
+    } catch (error) {
+      setSnackbarMessage('Error al procesar tu suscripción');
+      setSnackbarSeverity('error');
+    } finally {
+      setSubscribing(false);
+      setSnackbarOpen(true);
+    }
+  };
+
+  const currentQuote = LITERARY_QUOTES[currentQuoteIndex];
+
+  const SubscribeForm = ({ isMobile = false }) => (
+    <Box 
+      component="form" 
+      onSubmit={handleSubscribe}
       sx={{ 
-        bgcolor: bgColor,
-        borderBottom: `1px solid ${darkMode ? alpha(THEME.background.secondary, 0.2) : THEME.background.secondary}`,
-        transition: 'all 0.3s ease',
-        backdropFilter: elevated ? 'blur(10px)' : 'none',
-        backgroundImage: elevated
-          ? darkMode 
-            ? `linear-gradient(to bottom, ${alpha(THEME.background.secondary, 0.95)}, ${alpha(THEME.background.accent, 0.1)})`
-            : THEME.gradients.secondary
-          : 'none',
-        maxHeight: showMobileInput ? '120px' : '70px',
-        overflow: 'hidden'
+        display: 'flex',
+        alignItems: 'center',
+        width: '100%',
+        flexDirection: isMobile ? 'column' : 'row',
+        gap: isMobile ? 2 : 1,
+        p: isMobile ? 2 : 0
       }}
     >
-      <Container maxWidth="lg">
-        <Toolbar disableGutters sx={{ height: '70px' }}>
-          <Box sx={{ 
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            position: 'relative'
-          }}>
-            {/* Elemento decorativo */}
-            <Box
-              sx={{
-                position: 'absolute',
-                top: -30,
-                left: -50,
-                width: '100px',
-                height: '100px',
-                borderRadius: '50%',
-                background: `radial-gradient(circle, ${alpha(THEME.background.accent, 0.1)} 0%, transparent 70%)`,
-                zIndex: 0,
-                display: { xs: 'none', md: 'block' }
-              }}
-            />
-            
-            {/* Logo y título */}
-            <Link href="/" style={{ textDecoration: 'none' }}>
-              <Box 
-                component={motion.div}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5 }}
+      {isMobile && (
+        <Typography variant="h6" sx={{ mb: 1 }}>
+          Suscríbete al newsletter
+        </Typography>
+      )}
+      <TextField
+        fullWidth
+        size={isMobile ? "medium" : "small"}
+        placeholder="Ingresa tu email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        sx={{
+          '& .MuiOutlinedInput-root': {
+            fontFamily: THEME.typography.fontFamily,
+            borderRadius: '20px',
+            bgcolor: 'background.paper',
+            '&:hover fieldset': {
+              borderColor: THEME.background.accent,
+            },
+          }
+        }}
+        InputProps={{
+          endAdornment: (
+            <InputAdornment position="end">
+              <IconButton 
+                type="submit"
+                disabled={subscribing}
                 sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center',
-                  zIndex: 1,
-                  cursor: 'pointer'
+                  color: THEME.background.accent,
+                  '&:hover': { bgcolor: 'rgba(113, 130, 187, 0.1)' }
                 }}
               >
-                <MenuBookIcon 
-                  sx={{ 
-                    mr: 1.5, 
-                    fontSize: '1.8rem', 
-                    color: THEME.background.accent,
-                    transform: 'rotate(-5deg)'
-                  }} 
-                />
+                {subscribing ? (
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  >
+                    <SendIcon />
+                  </motion.div>
+                ) : (
+                  <SendIcon />
+                )}
+              </IconButton>
+            </InputAdornment>
+          )
+        }}
+      />
+      {isMobile && (
+        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center' }}>
+          Recibe las últimas actualizaciones directamente en tu correo
+        </Typography>
+      )}
+    </Box>
+  );
+
+  if (!mounted) return null;
+
+  return (
+    <>
+      <AppBar 
+        position="sticky" 
+        elevation={elevated ? 4 : 0}
+        sx={{ 
+          bgcolor: 'background.paper',
+          borderBottom: '1px solid',
+          borderColor: 'divider'
+        }}
+      >
+        {/* Barra superior con citas */}
+        <Box
+          sx={{
+            bgcolor: THEME.background.accent,
+            color: '#fff',
+            height: '40px',
+            display: { xs: 'none', md: 'flex' },
+            alignItems: 'center',
+            overflow: 'hidden',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          <Container maxWidth="lg">
+            <Box
+              component={motion.div}
+              initial={{ opacity: 1, y: 0 }}
+              animate={{ 
+                opacity: isQuoteChanging ? 0 : 1,
+                y: isQuoteChanging ? 20 : 0
+              }}
+              transition={{ duration: 0.5, ease: "easeInOut" }}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 1
+              }}
+            >
+              <Typography
+                component="span"
+                sx={{
+                  fontFamily: THEME.typography.fontFamily,
+                  fontStyle: 'italic',
+                  fontSize: '0.95rem',
+                  textOverflow: 'ellipsis',
+                  overflow: 'hidden'
+                }}
+              >
+                "{currentQuote.quote}"
+              </Typography>
+              <Typography
+                component="span"
+                sx={{
+                  fontFamily: THEME.typography.fontFamily,
+                  fontSize: '0.95rem',
+                  opacity: 0.9,
+                  fontWeight: 500
+                }}
+              >
+                — {currentQuote.author}
+              </Typography>
+            </Box>
+          </Container>
+        </Box>
+
+        <Container maxWidth="lg">
+          <Toolbar sx={{ 
+            display: 'flex', 
+            justifyContent: 'space-between',
+            py: 2,
+            gap: 2
+          }}>
+            {/* Logo centrado */}
+            <Box 
+              component={motion.div}
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              sx={{ 
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                justifyContent: 'center'
+              }}
+            >
+              <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
+                <MenuBookIcon sx={{ 
+                  fontSize: { xs: 32, md: 40 }, 
+                  color: THEME.background.accent 
+                }} />
                 <Typography
-                  variant="h5"
-                  component="div"
-                  sx={{ 
+                  variant="h4"
+                  sx={{
+                    fontFamily: THEME.typography.fontFamily,
                     fontWeight: 800,
                     color: THEME.text.primary,
-                    fontSize: { xs: '1.3rem', md: '1.5rem' },
-                    letterSpacing: '-0.02em',
-                    fontFamily: THEME.typography.fontFamily
+                    fontSize: { xs: '1.5rem', md: '2rem' }
                   }}
                 >
                   Bookate
                 </Typography>
-              </Box>
-            </Link>
-            
-            {/* Versión Desktop */}
-            <Box 
-              sx={{ 
-                display: { xs: 'none', md: 'flex' },
-                alignItems: 'center',
-                gap: 1
-              }}
-              component={motion.div}
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-            >
-              {subscribed ? (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0 }}
-                >
-                  <Typography 
-                    variant="body2" 
-                    sx={{ 
-                      color: THEME.background.accent, 
-                      fontWeight: 600,
-                      px: 2,
-                      fontFamily: THEME.typography.fontFamily
-                    }}
-                  >
-                    {subscribeMessage || '¡Gracias por suscribirte!'}
-                  </Typography>
-                </motion.div>
-              ) : (
-                <>
-                  <TextField
-                    placeholder="Tu email"
-                    size="small"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    error={!!subscribeError}
-                    helperText={subscribeError}
-                    disabled={subscribing}
-                    InputProps={{
-                      sx: {
-                        borderRadius: '8px',
-                        fontFamily: THEME.typography.fontFamily,
-                        bgcolor: darkMode 
-                          ? alpha(THEME.background.secondary, 0.1) 
-                          : alpha(THEME.background.secondary, 0.05),
-                        '& .MuiOutlinedInput-notchedOutline': {
-                          borderColor: darkMode 
-                            ? alpha(THEME.background.secondary, 0.2) 
-                            : THEME.background.secondary,
-                        },
-                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: THEME.background.accent,
-                        },
-                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                          borderColor: THEME.background.accent,
-                        },
-                        color: THEME.text.primary
-                      }
-                    }}
-                    sx={{ 
-                      width: '220px', 
-                      mr: 1,
-                      '& .MuiInputBase-input': {
-                        fontFamily: THEME.typography.fontFamily,
-                      },
-                      '& .MuiFormHelperText-root': {
-                        fontFamily: THEME.typography.fontFamily,
-                      }
-                    }}
-                  />
-                  <Button
-                    variant="contained"
-                    onClick={handleSubscribe}
-                    disabled={subscribing}
-                    sx={{ 
-                      bgcolor: THEME.background.accent,
-                      color: THEME.text.light,
-                      fontWeight: 600,
-                      px: 2,
-                      py: 1,
-                      borderRadius: '8px',
-                      fontSize: '0.9rem',
-                      textTransform: 'none',
-                      fontFamily: THEME.typography.fontFamily,
-                      boxShadow: `0 4px 10px ${alpha(THEME.background.accent, 0.2)}`,
-                      transition: 'all 0.3s',
-                      '&:hover': { 
-                        bgcolor: alpha(THEME.background.accent, 0.9),
-                        boxShadow: `0 6px 15px ${alpha(THEME.background.accent, 0.3)}`,
-                        transform: 'translateY(-2px)'
-                      }
-                    }}
-                  >
-                    {subscribing ? 'Enviando...' : 'Suscribirme'}
-                  </Button>
-                </>
-              )}
+              </Link>
             </Box>
-            
-            {/* Versión Mobile */}
-            <Box 
-              sx={{ 
-                display: { xs: 'flex', md: 'none' },
-                alignItems: 'center',
-                zIndex: 2
-              }}
-            >
-              {subscribed ? (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0 }}
-                >
-                  <Typography 
-                    variant="body2" 
-                    sx={{ 
-                      color: THEME.background.accent, 
-                      fontWeight: 600,
-                      fontSize: '0.85rem',
-                      fontFamily: THEME.typography.fontFamily
-                    }}
-                  >
-                    {subscribeMessage || '¡Gracias!'}
-                  </Typography>
-                </motion.div>
-              ) : (
-                <Tooltip 
-                  title={showMobileInput ? "Cerrar" : "Suscríbete al newsletter"} 
-                  arrow 
-                  TransitionComponent={Zoom}
-                  componentsProps={{
-                    tooltip: {
-                      sx: {
-                        fontFamily: THEME.typography.fontFamily,
-                        fontSize: '0.85rem'
+
+            {/* Formulario de suscripción desktop */}
+            <Box sx={{ 
+              display: { xs: 'none', md: 'flex' },
+              minWidth: 300
+            }}>
+              <SubscribeForm />
+            </Box>
+
+            {/* Acciones - Lado derecho */}
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 1
+            }}>
+              {/* Elementos visibles solo en desktop */}
+              <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 1 }}>
+                <Tooltip title="Inicio">
+                  <IconButton 
+                    component={Link} 
+                    href="/"
+                    sx={{
+                      '&:hover': {
+                        color: THEME.background.accent
                       }
-                    }
-                  }}
-                >
-                  <IconButton
-                    component={motion.button}
-                    whileTap={{ scale: 0.95 }}
-                    whileHover={{ 
-                      scale: 1.05,
-                      boxShadow: `0 4px 15px ${alpha(THEME.background.accent, 0.3)}`
-                    }}
-                    onClick={() => setShowMobileInput(!showMobileInput)}
-                    sx={{ 
-                      bgcolor: showMobileInput 
-                        ? alpha(THEME.background.accent, 0.15) 
-                        : THEME.background.accent,
-                      color: showMobileInput ? THEME.background.accent : THEME.text.light,
-                      p: 1,
-                      borderRadius: '8px',
-                      boxShadow: showMobileInput 
-                        ? 'none' 
-                        : `0 4px 10px ${alpha(THEME.background.accent, 0.2)}`,
-                      transition: 'all 0.3s',
                     }}
                   >
-                    {showMobileInput ? (
-                      <CloseIcon fontSize="small" />
-                    ) : (
-                      <NotificationsIcon fontSize="small" />
-                    )}
+                    <HomeIcon />
                   </IconButton>
                 </Tooltip>
-              )}
-            </Box>
-          </Box>
-        </Toolbar>
-        
-        {/* Input móvil expandible */}
-        <Collapse in={showMobileInput}>
-          <Box 
-            sx={{ 
-              display: 'flex',
-              alignItems: 'center',
-              px: 1,
-              pb: 2,
-              pt: 0.5
-            }}
-            component={motion.div}
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            {subscribeError && (
-              <Typography 
-                variant="caption" 
-                color="error" 
-                sx={{ mb: 1, width: '100%', textAlign: 'center', fontFamily: THEME.typography.fontFamily }}
-              >
-                {subscribeError}
-              </Typography>
-            )}
-            
-            <TextField
-              fullWidth
-              placeholder="Escribe tu email para suscribirte"
-              size="small"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoFocus
-              disabled={subscribing}
-              error={!!subscribeError}
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton 
-                      edge="end"
-                      onClick={handleSubscribe}
-                      disabled={subscribing}
-                      sx={{ color: THEME.background.accent }}
-                    >
-                      {subscribing ? (
-                        <CircularProgress size={20} color="inherit" />
-                      ) : (
-                        <SendIcon />
-                      )}
+
+                {currentPath && (
+                  <Tooltip title="Guardar para leer después">
+                    <IconButton onClick={handleSaveArticle}>
+                      {savedArticles.includes(currentPath) 
+                        ? <BookmarkFilledIcon color="primary" />
+                        : <BookmarkBorderIcon />
+                      }
                     </IconButton>
-                  </InputAdornment>
-                ),
-                sx: {
-                  borderRadius: '8px',
-                  fontFamily: THEME.typography.fontFamily,
-                  bgcolor: darkMode 
-                    ? alpha(THEME.background.secondary, 0.1) 
-                    : alpha(THEME.background.secondary, 0.05),
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: darkMode 
-                      ? alpha(THEME.background.secondary, 0.2) 
-                      : THEME.background.secondary,
-                  },
-                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    borderColor: THEME.background.accent,
-                  },
-                  color: THEME.text.primary
-                }
-              }}
-            />
-          </Box>
-        </Collapse>
-      </Container>
-    </AppBar>
+                  </Tooltip>
+                )}
+
+                <Tooltip title="Sobre Nosotros">
+                  <IconButton 
+                    component={Link} 
+                    href="/sobre-nosotros"
+                    sx={{
+                      '&:hover': {
+                        color: THEME.background.accent
+                      }
+                    }}
+                  >
+                    <InfoIcon />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+
+              {/* Botones siempre visibles */}
+              <Tooltip title="Compartir">
+                <IconButton onClick={handleShare}>
+                  <ShareIcon />
+                </IconButton>
+              </Tooltip>
+
+              {/* Botón de suscripción solo en mobile */}
+              <Tooltip title="Suscribirse">
+                <IconButton
+                  sx={{ 
+                    display: { xs: 'flex', md: 'none' },
+                    color: THEME.background.accent
+                  }}
+                  onClick={() => setSubscribeDrawerOpen(true)}
+                >
+                  <EmailIcon />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          </Toolbar>
+        </Container>
+      </AppBar>
+
+      {/* Drawer de suscripción para móvil */}
+      <Drawer
+        anchor="bottom"
+        open={subscribeDrawerOpen}
+        onClose={() => setSubscribeDrawerOpen(false)}
+        PaperProps={{
+          sx: {
+            borderTopLeftRadius: 16,
+            borderTopRightRadius: 16,
+            py: 2
+          }
+        }}
+      >
+        <SubscribeForm isMobile />
+      </Drawer>
+
+      {/* Snackbar para feedback */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={3000}
+        onClose={() => setSnackbarOpen(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={() => setSnackbarOpen(false)} 
+          severity={snackbarSeverity}
+          sx={{ width: '100%' }}
+        >
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
+    </>
   );
 } 

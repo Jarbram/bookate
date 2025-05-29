@@ -1,10 +1,9 @@
 'use client';
 import { Suspense } from 'react';
-import { Container, Typography, Box, Divider, CircularProgress } from '@mui/material';
+import { Container, Box, CircularProgress } from '@mui/material';
 import dynamic from 'next/dynamic';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
-
 
 // Crear el cliente de Query
 const queryClient = new QueryClient();
@@ -54,18 +53,14 @@ const PostGrid = dynamic(() => import('@/components/Posts/PostGrid'), {
 });
 
 // Componentes cargados dinámicamente con SSR:false para evitar errores de hidratación
-const HeaderComponent = dynamic(() => import('@/components/Header/Header'), { ssr: false });
-const FooterComponent = dynamic(() => import('@/components/Footer/Footer'), { ssr: false });
 const SidebarComponent = dynamic(() => import('@/components/Sidebar/Sidebar'), { ssr: false });
 const MobileSidebarContentComponent = dynamic(() => import('@/components/Sidebar/MobileSidebarContent'), { ssr: false });
 
 // Componente estático para el esqueleto de carga
 function LoadingSkeleton() {
   return (
-    <Box sx={{ width: '100%', pt: 4 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-        <CircularProgress />
-      </Box>
+    <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+      <CircularProgress />
     </Box>
   );
 }
@@ -75,65 +70,34 @@ export default function Home() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider theme={theme}>
-        <Suspense fallback={<LoadingSkeleton />}>
-          <HomeContent />
-        </Suspense>
+        <Container maxWidth="lg" sx={{ my: { xs: 2, md: 2 } }}>
+          <Box sx={{ display: { xs: 'block', md: 'none' }, mb: 4 }}>
+            <MobileSidebarContentComponent showSearchAndCategories={true} />
+          </Box>
+
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: { xs: 'column', md: 'row' },
+            gap: { xs: 3, md: 4 }
+          }}>
+            <Box sx={{ 
+              width: { xs: '100%', md: '25%' },
+              display: { xs: 'none', md: 'block' }
+            }}>
+              <SidebarComponent />
+            </Box>
+            
+            <Box sx={{ 
+              width: { xs: '100%', md: '75%' },
+              flexGrow: 1
+            }}>
+              <Suspense fallback={<LoadingSkeleton />}>
+                <PostGrid />
+              </Suspense>
+            </Box>
+          </Box>
+        </Container>
       </ThemeProvider>
     </QueryClientProvider>
-  );
-}
-
-// Componente cliente para el contenido principal
-function HomeContent() {
-  return (
-    <Box>
-      <HeaderComponent />
-      
-      <Container maxWidth="lg" sx={{ my: { xs: 2, md: 2 } }}>
-        {/* Contenido móvil superior */}
-        <Box sx={{ display: { xs: 'block', md: 'none' }, mb: 4 }}>
-          <MobileSidebarContentComponent 
-            showSearchAndCategories={true}
-          />
-        </Box>
-
-        <Box sx={{ 
-          display: 'flex', 
-          flexDirection: { xs: 'column', md: 'row' },
-          gap: { xs: 3, md: 4 }
-        }}>
-          {/* Sidebar desktop */}
-          <Box sx={{ 
-            width: { xs: '100%', md: '25%' },
-            display: { xs: 'none', md: 'block' }
-          }}>
-            <SidebarComponent />
-          </Box>
-          
-          {/* Grid de posts */}
-          <Box sx={{ 
-            width: { xs: '100%', md: '75%' },
-            flexGrow: 1
-          }}>
-            <Suspense fallback={<LoadingSkeleton />}>
-              <PostGrid />
-            </Suspense>
-          </Box>
-        </Box>
-        
-        {/* Contenido adicional móvil inferior */}
-        <Box sx={{ 
-          display: { xs: 'block', md: 'none' }, 
-          mt: 4 
-        }}>
-          <Divider sx={{ mb: 4 }} />
-          <MobileSidebarContentComponent 
-            showSearchAndCategories={false}
-          />
-        </Box>
-      </Container>
-      
-      <FooterComponent />
-    </Box>
   );
 }

@@ -19,16 +19,6 @@ import {
 import InstagramIcon from '@mui/icons-material/Instagram';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
-import FacebookIcon from '@mui/icons-material/Facebook';
-import TwitterIcon from '@mui/icons-material/Twitter';
-import YouTubeIcon from '@mui/icons-material/YouTube';
-import LocationOnIcon from '@mui/icons-material/LocationOn';
-import EmailIcon from '@mui/icons-material/Email';
-import PhoneIcon from '@mui/icons-material/Phone';
-import BookIcon from '@mui/icons-material/Book';
-import LocalLibraryIcon from '@mui/icons-material/LocalLibrary';
-import PinterestIcon from '@mui/icons-material/Pinterest';
-import { motion } from 'framer-motion';
 
 export default function Footer({ darkMode = false }) {
   const [isVisible, setIsVisible] = useState(false);
@@ -47,7 +37,8 @@ export default function Footer({ darkMode = false }) {
     text: colors.text,
     accent: colors.primary,
     secondary: colors.secondary,
-    gradient: `linear-gradient(to bottom, ${darkMode ? '#2a2438' : colors.background}, ${darkMode ? '#36314c' : colors.secondary})`
+    gradient: `linear-gradient(to bottom, ${darkMode ? '#2a2438' : colors.background}, ${darkMode ? '#36314c' : colors.secondary})`,
+    fontFamily: "'League Spartan', sans-serif"
   };
 
   useEffect(() => {
@@ -134,6 +125,7 @@ export default function Footer({ darkMode = false }) {
               variant="h4" 
               component="div" 
               sx={{ 
+                fontFamily: theme.fontFamily,
                 fontWeight: 800, 
                 mb: 2.5,
                 color: theme.text,
@@ -181,6 +173,7 @@ export default function Footer({ darkMode = false }) {
             <Typography 
               variant="h6" 
               sx={{ 
+                fontFamily: theme.fontFamily,
                 fontWeight: 700,
                 color: theme.text,
                 mb: 2.5,
@@ -242,6 +235,7 @@ export default function Footer({ darkMode = false }) {
             <Typography 
               variant="h6" 
               sx={{ 
+                fontFamily: theme.fontFamily,
                 fontWeight: 700,
                 color: theme.text,
                 mb: 2.5,
@@ -308,6 +302,7 @@ export default function Footer({ darkMode = false }) {
                 variant="contained"
                 fullWidth
                 sx={{ 
+                  fontFamily: theme.fontFamily,
                   backgroundColor: theme.accent,
                   color: theme.bg,
                   borderRadius: '10px',
@@ -367,6 +362,55 @@ export default function Footer({ darkMode = false }) {
           <ArrowUpwardIcon fontSize="small" />
         </Box>
       </Fade>
+      
+      {/* Enlaces legales */}
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center',
+        mt: 6,
+        pt: 3,
+        borderTop: `1px solid ${alpha(theme.text, 0.1)}`,
+        fontFamily: theme.fontFamily,
+      }}>
+        <Stack 
+          direction={{ xs: 'column', sm: 'row' }} 
+          spacing={{ xs: 1, sm: 2 }}
+          alignItems="center"
+        >
+          <Link 
+            href="/politica-privacidad"
+            sx={{ 
+              color: alpha(theme.text, 0.7),
+              textDecoration: 'none',
+              '&:hover': {
+                color: theme.accent
+              }
+            }}
+          >
+            Política de Privacidad
+          </Link>
+          <Box 
+            sx={{ 
+              display: { xs: 'none', sm: 'block' },
+              color: alpha(theme.text, 0.3)
+            }}
+          >
+            •
+          </Box>
+          <Link 
+            href="/terminos-condiciones"
+            sx={{ 
+              color: alpha(theme.text, 0.7),
+              textDecoration: 'none',
+              '&:hover': {
+                color: theme.accent
+              }
+            }}
+          >
+            Términos y Condiciones
+          </Link>
+        </Stack>
+      </Box>
       
       <style jsx global>{`
         @keyframes fadeIn {
