@@ -7,8 +7,16 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import dynamic from 'next/dynamic';
 
-const HeaderComponent = dynamic(() => import('@/components/Header/Header'), { ssr: false });
-const FooterComponent = dynamic(() => import('@/components/Footer/Footer'), { ssr: false });
+// Mover estos componentes fuera del componente principal
+const HeaderComponent = dynamic(() => import('@/components/Header/Header'), {
+  ssr: false,
+  loading: () => <div style={{ height: '64px' }} /> // Placeholder mientras carga
+});
+
+const FooterComponent = dynamic(() => import('@/components/Footer/Footer'), {
+  ssr: false,
+  loading: () => <div style={{ height: '64px' }} /> // Placeholder mientras carga
+});
 
 const leagueSpartan = League_Spartan({
   subsets: ['latin'],
@@ -17,6 +25,23 @@ const leagueSpartan = League_Spartan({
 
 // Crear el cliente fuera del componente para evitar recreaciones innecesarias
 const queryClient = new QueryClient()
+
+// Crear un componente separado para el contenido principal
+function MainLayout({ children }) {
+  return (
+    <div style={{ 
+      display: 'flex', 
+      flexDirection: 'column',
+      minHeight: '100vh'
+    }}>
+      <HeaderComponent />
+      <main style={{ flex: 1 }}>
+        {children}
+      </main>
+      <FooterComponent />
+    </div>
+  );
+}
 
 export default function RootLayout({ children }) {
   useEffect(() => {
@@ -35,22 +60,12 @@ export default function RootLayout({ children }) {
     <QueryClientProvider client={queryClient}>
       <html lang="es" className={leagueSpartan.className}>
         <head>
-          <meta name="google-adsense-account" content="ca-pub-8583192861201767" />
+          <meta name="google-adsense-account" content={process.env.NEXT_PUBLIC_ADSENSE_CLIENT} />
         </head>
         <body>
           <ThemeProvider>
             <CssBaseline />
-            <div style={{ 
-              display: 'flex', 
-              flexDirection: 'column',
-              minHeight: '100vh'
-            }}>
-              <HeaderComponent />
-              <main style={{ flex: 1 }}>
-                {children}
-              </main>
-              <FooterComponent />
-            </div>
+            <MainLayout>{children}</MainLayout>
           </ThemeProvider>
         </body>
       </html>

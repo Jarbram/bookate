@@ -409,6 +409,26 @@ export default function Footer({ darkMode = false }) {
           >
             Términos y Condiciones
           </Link>
+          <Box 
+            sx={{ 
+              display: { xs: 'none', sm: 'block' },
+              color: alpha(theme.text, 0.3)
+            }}
+          >
+            •
+          </Box>
+          <Link 
+            href="/contactanos"
+            sx={{ 
+              color: alpha(theme.text, 0.7),
+              textDecoration: 'none',
+              '&:hover': {
+                color: theme.accent
+              }
+            }}
+          >
+            Contáctanos
+          </Link>
         </Stack>
       </Box>
       

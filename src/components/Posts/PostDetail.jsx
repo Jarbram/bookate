@@ -22,7 +22,6 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { supabase } from '@/lib/supabase';
 import RelatedPosts from '@/components/Posts/RelatedPosts';
-import AdUnit from '@/components/Ads/AdUnit';
 
 // Actualización del objeto THEME
 const THEME = {
@@ -291,9 +290,6 @@ export default function PostDetail({ post }) {
               )}
             </Box>
           )}
-
-          {/* Anuncio */}
-          <AdUnit slot="tu-ad-slot-id" style={{ my: 4, minHeight: '250px' }} />
 
           {/* Contenido principal */}
           <Paper
